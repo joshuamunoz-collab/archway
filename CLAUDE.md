@@ -160,5 +160,3 @@ checking + money market accounts. PM charges 10% of collected rent.
 
 Check SPEC.md Section 8 "Build Order" for the current sprint and task list.
 
-
-
