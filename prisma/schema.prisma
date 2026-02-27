@@ -1,0 +1,527 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── User Profiles ─────────────────────────────────────────────────────────────
+// id matches auth.users(id) from Supabase Auth.
+// FK is enforced via a Supabase DB trigger, not modelled here in Prisma.
+
+model UserProfile {
+  id        String   @id @db.Uuid
+  email     String
+  fullName  String   @map("full_name")
+  role      String   @default("staff") // admin | staff | pm | pm_staff
+  phone     String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  approvedBills  PmBill[]        @relation("ApprovedBy")
+  billMessages   PmBillMessage[]
+  taskMessages   PmTaskMessage[]
+  activityLogs   ActivityLog[]
+
+  @@map("user_profiles")
+}
+
+// ── Entities ──────────────────────────────────────────────────────────────────
+
+model Entity {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  ein       String?
+  address   String?
+  phone     String?
+  email     String?
+  pmFeePct  Decimal  @default(10.00) @map("pm_fee_pct") @db.Decimal(5, 2)
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  bankAccounts BankAccount[]
+  properties   Property[]
+
+  @@map("entities")
+}
+
+// ── Bank Accounts ─────────────────────────────────────────────────────────────
+
+model BankAccount {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  entityId    String   @map("entity_id") @db.Uuid
+  accountName String   @map("account_name")
+  accountType String   @map("account_type") // checking | money_market
+  institution String?
+  lastFour    String?  @map("last_four")
+  isDefault   Boolean  @default(false) @map("is_default")
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  entity   Entity    @relation(fields: [entityId], references: [id])
+  payments Payment[]
+  expenses Expense[]
+  pmBills  PmBill[]
+
+  @@map("bank_accounts")
+}
+
+// ── Properties ────────────────────────────────────────────────────────────────
+
+model Property {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  entityId     String    @map("entity_id") @db.Uuid
+  addressLine1 String    @map("address_line1")
+  addressLine2 String?   @map("address_line2")
+  city         String    @default("St. Louis")
+  state        String    @default("MO")
+  zip          String
+  parcelNumber String?   @map("parcel_number")
+  ward         String?
+  neighborhood String?
+  propertyType String?   @map("property_type") // single_family | duplex | multi_family
+  beds         Int?
+  baths        Decimal?  @db.Decimal(3, 1)
+  sqft         Int?
+  yearBuilt    Int?      @map("year_built")
+  isSection8   Boolean   @default(false) @map("is_section_8")
+  status       String    @default("vacant") // occupied | vacant | rehab | pending_inspection | pending_packet
+  vacantSince  DateTime? @map("vacant_since") @db.Date
+  notes        String?
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  entity            Entity            @relation(fields: [entityId], references: [id])
+  leases            Lease[]
+  payments          Payment[]
+  expenses          Expense[]
+  pmBills           PmBill[]
+  pmTasks           PmTask[]
+  insurancePolicies InsurancePolicy[]
+  propertyTaxes     PropertyTax[]
+  cityNotices       CityNotice[]
+  rehabProjects     RehabProject[]
+  inspections       Inspection[]
+  documents         Document[]
+  photos            Photo[]
+
+  @@index([entityId], map: "idx_properties_entity")
+  @@index([status], map: "idx_properties_status")
+  @@map("properties")
+}
+
+// ── Tenants ───────────────────────────────────────────────────────────────────
+
+model Tenant {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  firstName     String   @map("first_name")
+  lastName      String   @map("last_name")
+  phone         String?
+  email         String?
+  voucherNumber String?  @map("voucher_number")
+  phaCaseworker String?  @map("pha_caseworker")
+  phaPhone      String?  @map("pha_phone")
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  leases    Lease[]
+  documents Document[]
+
+  @@map("tenants")
+}
+
+// ── Leases ────────────────────────────────────────────────────────────────────
+
+model Lease {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId          String    @map("property_id") @db.Uuid
+  tenantId            String    @map("tenant_id") @db.Uuid
+  startDate           DateTime  @map("start_date") @db.Date
+  endDate             DateTime? @map("end_date") @db.Date
+  contractRent        Decimal   @map("contract_rent") @db.Decimal(10, 2)
+  hapAmount           Decimal?  @map("hap_amount") @db.Decimal(10, 2)
+  tenantCopay         Decimal?  @map("tenant_copay") @db.Decimal(10, 2)
+  utilityAllowance    Decimal?  @map("utility_allowance") @db.Decimal(10, 2)
+  paymentStandard     Decimal?  @map("payment_standard") @db.Decimal(10, 2)
+  hapContractStart    DateTime? @map("hap_contract_start") @db.Date
+  hapContractEnd      DateTime? @map("hap_contract_end") @db.Date
+  recertificationDate DateTime? @map("recertification_date") @db.Date
+  status              String    @default("active") // active | expired | terminated
+  notes               String?
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  property Property  @relation(fields: [propertyId], references: [id])
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  payments Payment[]
+
+  @@map("leases")
+}
+
+// ── Payments ──────────────────────────────────────────────────────────────────
+
+model Payment {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId      String    @map("property_id") @db.Uuid
+  leaseId         String?   @map("lease_id") @db.Uuid
+  bankAccountId   String?   @map("bank_account_id") @db.Uuid
+  date            DateTime  @db.Date
+  amount          Decimal   @db.Decimal(10, 2)
+  type            String    // hap | copay | other_income
+  status          String    @default("received") // received | pending | overdue | nsf
+  referenceNumber String?   @map("reference_number")
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  property    Property     @relation(fields: [propertyId], references: [id])
+  lease       Lease?       @relation(fields: [leaseId], references: [id])
+  bankAccount BankAccount? @relation(fields: [bankAccountId], references: [id])
+
+  @@index([propertyId], map: "idx_payments_property")
+  @@index([date], map: "idx_payments_date")
+  @@index([type], map: "idx_payments_type")
+  @@map("payments")
+}
+
+// ── PM Bills ──────────────────────────────────────────────────────────────────
+
+model PmBill {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId       String    @map("property_id") @db.Uuid
+  vendorName       String?   @map("vendor_name")
+  invoiceNumber    String?   @map("invoice_number")
+  billDate         DateTime  @map("bill_date") @db.Date
+  dueDate          DateTime? @map("due_date") @db.Date
+  totalAmount      Decimal   @map("total_amount") @db.Decimal(10, 2)
+  status           String    @default("received") // received | under_review | approved | paid | disputed
+  approvedBy       String?   @map("approved_by") @db.Uuid
+  approvedAt       DateTime? @map("approved_at") @db.Timestamptz(6)
+  paidDate         DateTime? @map("paid_date") @db.Date
+  paymentMethod    String?   @map("payment_method") // check | ach | zelle | cash
+  paymentReference String?   @map("payment_reference")
+  bankAccountId    String?   @map("bank_account_id") @db.Uuid
+  invoiceUrl       String?   @map("invoice_url")
+  notes            String?
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  property    Property        @relation(fields: [propertyId], references: [id])
+  bankAccount BankAccount?    @relation(fields: [bankAccountId], references: [id])
+  approver    UserProfile?    @relation("ApprovedBy", fields: [approvedBy], references: [id])
+  lineItems   PmBillLineItem[]
+  messages    PmBillMessage[]
+  expenses    Expense[]
+
+  @@index([status], map: "idx_pm_bills_status")
+  @@index([propertyId], map: "idx_pm_bills_property")
+  @@map("pm_bills")
+}
+
+// ── PM Bill Line Items ────────────────────────────────────────────────────────
+
+model PmBillLineItem {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  billId      String  @map("bill_id") @db.Uuid
+  description String
+  category    String?
+  subcategory String?
+  amount      Decimal @db.Decimal(10, 2)
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  // Relations
+  bill PmBill @relation(fields: [billId], references: [id], onDelete: Cascade)
+
+  @@map("pm_bill_line_items")
+}
+
+// ── PM Bill Messages ──────────────────────────────────────────────────────────
+
+model PmBillMessage {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  billId    String   @map("bill_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  message   String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  bill PmBill      @relation(fields: [billId], references: [id])
+  user UserProfile @relation(fields: [userId], references: [id])
+
+  @@map("pm_bill_messages")
+}
+
+// ── Expenses ──────────────────────────────────────────────────────────────────
+
+model Expense {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId    String    @map("property_id") @db.Uuid
+  bankAccountId String?   @map("bank_account_id") @db.Uuid
+  date          DateTime  @db.Date
+  amount        Decimal   @db.Decimal(10, 2)
+  category      String
+  subcategory   String?
+  vendor        String?
+  description   String?
+  receiptUrl    String?   @map("receipt_url")
+  source        String    @default("manual") // manual | pm_bill | auto_pm_fee
+  billId        String?   @map("bill_id") @db.Uuid
+  notes         String?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  property    Property     @relation(fields: [propertyId], references: [id])
+  bankAccount BankAccount? @relation(fields: [bankAccountId], references: [id])
+  bill        PmBill?      @relation(fields: [billId], references: [id])
+
+  @@index([propertyId], map: "idx_expenses_property")
+  @@index([date], map: "idx_expenses_date")
+  @@index([category], map: "idx_expenses_category")
+  @@map("expenses")
+}
+
+// ── Insurance Policies ────────────────────────────────────────────────────────
+
+model InsurancePolicy {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId     String    @map("property_id") @db.Uuid
+  carrier        String
+  policyNumber   String?   @map("policy_number")
+  policyType     String    @default("standard") @map("policy_type") // standard | vacancy
+  premiumAnnual  Decimal?  @map("premium_annual") @db.Decimal(10, 2)
+  liabilityLimit Decimal?  @map("liability_limit") @db.Decimal(12, 2)
+  premisesLimit  Decimal?  @map("premises_limit") @db.Decimal(12, 2)
+  effectiveDate  DateTime? @map("effective_date") @db.Date
+  expirationDate DateTime? @map("expiration_date") @db.Date
+  declarationUrl String?   @map("declaration_url")
+  notes          String?
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@map("insurance_policies")
+}
+
+// ── Property Taxes ────────────────────────────────────────────────────────────
+
+model PropertyTax {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId    String    @map("property_id") @db.Uuid
+  taxYear       Int       @map("tax_year")
+  assessedValue Decimal?  @map("assessed_value") @db.Decimal(12, 2)
+  annualAmount  Decimal?  @map("annual_amount") @db.Decimal(10, 2)
+  status        String    @default("unpaid") // paid | unpaid | delinquent
+  paidDate      DateTime? @map("paid_date") @db.Date
+  paidAmount    Decimal?  @map("paid_amount") @db.Decimal(10, 2)
+  notes         String?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@map("property_taxes")
+}
+
+// ── City Notices ──────────────────────────────────────────────────────────────
+
+model CityNotice {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId      String    @map("property_id") @db.Uuid
+  dateReceived    DateTime  @map("date_received") @db.Date
+  noticeType      String?   @map("notice_type")
+  description     String
+  deadline        DateTime? @db.Date
+  assignedTo      String?   @map("assigned_to")
+  status          String    @default("open") // open | sent_to_pm | pm_acknowledged | in_progress | resolved | overdue
+  sentToPmDate    DateTime? @map("sent_to_pm_date") @db.Date
+  pmResponseDate  DateTime? @map("pm_response_date") @db.Date
+  resolvedDate    DateTime? @map("resolved_date") @db.Date
+  resolutionNotes String?   @map("resolution_notes")
+  documentUrl     String?   @map("document_url")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  property Property @relation(fields: [propertyId], references: [id])
+  pmTasks  PmTask[]
+
+  @@map("city_notices")
+}
+
+// ── PM Tasks ──────────────────────────────────────────────────────────────────
+
+model PmTask {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId     String?   @map("property_id") @db.Uuid
+  cityNoticeId   String?   @map("city_notice_id") @db.Uuid
+  taskType       String    @map("task_type") // city_notice_response | maintenance | inspection_prep | rehab | general
+  priority       String    @default("medium") // low | medium | high | urgent
+  title          String
+  description    String?
+  assignedTo     String?   @map("assigned_to")
+  dueDate        DateTime? @map("due_date") @db.Date
+  acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz(6)
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz(6)
+  status         String    @default("created") // created | sent_to_pm | pm_acknowledged | in_progress | completed | overdue
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  property   Property?       @relation(fields: [propertyId], references: [id])
+  cityNotice CityNotice?     @relation(fields: [cityNoticeId], references: [id])
+  messages   PmTaskMessage[]
+
+  @@map("pm_tasks")
+}
+
+// ── PM Task Messages ──────────────────────────────────────────────────────────
+
+model PmTaskMessage {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  taskId    String   @map("task_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  message   String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  task PmTask      @relation(fields: [taskId], references: [id])
+  user UserProfile @relation(fields: [userId], references: [id])
+
+  @@map("pm_task_messages")
+}
+
+// ── Rehab Projects ────────────────────────────────────────────────────────────
+
+model RehabProject {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId       String    @map("property_id") @db.Uuid
+  scope            String?
+  startDate        DateTime? @map("start_date") @db.Date
+  targetEndDate    DateTime? @map("target_end_date") @db.Date
+  actualEndDate    DateTime? @map("actual_end_date") @db.Date
+  originalEstimate Decimal?  @map("original_estimate") @db.Decimal(10, 2)
+  currentEstimate  Decimal?  @map("current_estimate") @db.Decimal(10, 2)
+  actualCost       Decimal   @default(0) @map("actual_cost") @db.Decimal(10, 2)
+  status           String    @default("not_started") // not_started | in_progress | on_hold | completed | over_budget | behind_schedule
+  notes            String?
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  property   Property         @relation(fields: [propertyId], references: [id])
+  milestones RehabMilestone[]
+  photos     Photo[]
+
+  @@map("rehab_projects")
+}
+
+// ── Rehab Milestones ──────────────────────────────────────────────────────────
+
+model RehabMilestone {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rehabProjectId String    @map("rehab_project_id") @db.Uuid
+  name           String
+  sortOrder      Int?      @map("sort_order")
+  targetDate     DateTime? @map("target_date") @db.Date
+  actualDate     DateTime? @map("actual_date") @db.Date
+  status         String    @default("pending") // pending | in_progress | completed | skipped
+  notes          String?
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  rehabProject RehabProject @relation(fields: [rehabProjectId], references: [id])
+
+  @@map("rehab_milestones")
+}
+
+// ── Inspections ───────────────────────────────────────────────────────────────
+
+model Inspection {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId           String    @map("property_id") @db.Uuid
+  inspectionType       String    @map("inspection_type") // initial_hqs | annual_hqs | reinspection | city_code
+  scheduledDate        DateTime? @map("scheduled_date") @db.Date
+  completedDate        DateTime? @map("completed_date") @db.Date
+  inspector            String?
+  result               String?   // pass | fail | pending
+  deficiencies         String?
+  reinspectionDeadline DateTime? @map("reinspection_deadline") @db.Date
+  notes                String?
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@map("inspections")
+}
+
+// ── Documents ─────────────────────────────────────────────────────────────────
+
+model Document {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId String?   @map("property_id") @db.Uuid
+  tenantId   String?   @map("tenant_id") @db.Uuid
+  docType    String?   @map("doc_type") // lease | inspection | insurance | tax | city_notice | receipt | other
+  filename   String
+  fileUrl    String    @map("file_url")
+  fileSize   Int?      @map("file_size")
+  uploadedAt DateTime  @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+  notes      String?
+
+  // Relations
+  property Property? @relation(fields: [propertyId], references: [id])
+  tenant   Tenant?   @relation(fields: [tenantId], references: [id])
+
+  @@map("documents")
+}
+
+// ── Photos ────────────────────────────────────────────────────────────────────
+
+model Photo {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId     String    @map("property_id") @db.Uuid
+  rehabProjectId String?   @map("rehab_project_id") @db.Uuid
+  category       String?   // exterior | interior | damage | rehab_before | rehab_during | rehab_after | insurance
+  caption        String?
+  fileUrl        String    @map("file_url")
+  takenAt        DateTime? @map("taken_at") @db.Date
+  uploadedAt     DateTime  @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+
+  // Relations
+  property     Property      @relation(fields: [propertyId], references: [id])
+  rehabProject RehabProject? @relation(fields: [rehabProjectId], references: [id])
+
+  @@map("photos")
+}
+
+// ── Activity Log ──────────────────────────────────────────────────────────────
+
+model ActivityLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id") @db.Uuid
+  action     String
+  details    Json?    @db.JsonB
+  userId     String?  @map("user_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  user UserProfile? @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId], map: "idx_activity_entity")
+  @@index([createdAt], map: "idx_activity_date")
+  @@map("activity_log")
+}
