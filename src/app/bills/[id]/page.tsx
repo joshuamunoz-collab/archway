@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { AppShell } from '@/components/shared/app-shell'
 import { BillDetail } from '@/components/bills/bill-detail'
 import { prisma } from '@/lib/prisma'

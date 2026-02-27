@@ -40,6 +40,7 @@ const settingsItems = [
   { label: 'Users',       href: '/settings/users' },
   { label: 'Categories',  href: '/settings/categories' },
   { label: 'Preferences', href: '/settings/preferences' },
+  { label: 'Activity',    href: '/settings/activity' },
 ]
 
 interface SidebarProps {

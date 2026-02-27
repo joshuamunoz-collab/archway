@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { AppShell } from '@/components/shared/app-shell'
 import { EntityManager } from '@/components/dashboard/entity-manager'
 import { prisma } from '@/lib/prisma'

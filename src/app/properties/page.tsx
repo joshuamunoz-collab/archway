@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { AppShell } from '@/components/shared/app-shell'
 import { PropertyTable, type PropertyRow } from '@/components/property/property-table'
 import { prisma } from '@/lib/prisma'

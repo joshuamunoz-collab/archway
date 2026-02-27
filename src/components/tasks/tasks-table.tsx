@@ -286,6 +286,13 @@ export function TasksTable({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                      {tasks.length === 0 ? 'No tasks yet. Create your first task above.' : 'No tasks match your filters.'}
+                    </td>
+                  </tr>
+                )}
                 {filtered.map(t => (
                   <tr key={t.id} className="hover:bg-secondary/30">
                     <td className="px-4 py-3">

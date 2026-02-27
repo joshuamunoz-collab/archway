@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { AppShell } from '@/components/shared/app-shell'
 import { PropertyImporter } from '@/components/dashboard/property-importer'
 import { PaymentsImporter } from '@/components/import/payments-importer'
