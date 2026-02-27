@@ -9,7 +9,9 @@
       "Bash(gh:*)",
       "Bash(vercel:*)",
       "Bash(git add:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(npm run:*)",
+      "Bash(rm:*)"
     ]
   }
 }
