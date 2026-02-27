@@ -15,6 +15,7 @@ import { FinancialsTab } from './tabs/financials-tab'
 import { InsuranceTab } from './tabs/insurance-tab'
 import { TaxesTab } from './tabs/taxes-tab'
 import { CityTab } from './tabs/city-tab'
+import { InspectionsTab } from './tabs/inspections-tab'
 import { DocumentsTab } from './tabs/documents-tab'
 import { PhotosTab } from './tabs/photos-tab'
 import { ActivityTab } from './tabs/activity-tab'
@@ -35,8 +36,9 @@ const TABS = [
   { value: 'financials', label: 'Financials' },
   { value: 'insurance',  label: 'Insurance' },
   { value: 'taxes',      label: 'Taxes' },
-  { value: 'compliance', label: 'City/Compliance' },
-  { value: 'documents',  label: 'Documents' },
+  { value: 'compliance',   label: 'City/Compliance' },
+  { value: 'inspections',  label: 'Inspections' },
+  { value: 'documents',    label: 'Documents' },
   { value: 'photos',     label: 'Photos' },
   { value: 'activity',   label: 'Activity' },
 ]
@@ -173,8 +175,9 @@ export function PropertyDetail({ data }: { data: PropertyDetailData }) {
         {activeTab === 'financials' && <FinancialsTab data={data} />}
         {activeTab === 'insurance'  && <InsuranceTab data={data} />}
         {activeTab === 'taxes'      && <TaxesTab data={data} />}
-        {activeTab === 'compliance' && <CityTab data={data} />}
-        {activeTab === 'documents'  && <DocumentsTab data={data} />}
+        {activeTab === 'compliance'  && <CityTab data={data} />}
+        {activeTab === 'inspections' && <InspectionsTab data={data} />}
+        {activeTab === 'documents'   && <DocumentsTab data={data} />}
         {activeTab === 'photos'     && <PhotosTab data={data} />}
         {activeTab === 'activity'   && <ActivityTab data={data} />}
       </div>

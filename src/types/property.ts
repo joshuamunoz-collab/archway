@@ -132,6 +132,46 @@ export interface CategoryChartPoint {
   amount: number
 }
 
+export interface InspectionData {
+  id: string
+  inspectionType: string
+  scheduledDate: string | null
+  completedDate: string | null
+  inspector: string | null
+  result: string | null
+  deficiencies: string | null
+  reinspectionDeadline: string | null
+  notes: string | null
+  createdAt: string
+}
+
+export interface RehabMilestoneData {
+  id: string
+  name: string
+  sortOrder: number | null
+  targetDate: string | null
+  actualDate: string | null
+  status: string
+  notes: string | null
+}
+
+export interface RehabProjectData {
+  id: string
+  propertyId: string
+  scope: string | null
+  startDate: string | null
+  targetEndDate: string | null
+  actualEndDate: string | null
+  originalEstimate: number | null
+  currentEstimate: number | null
+  actualCost: number
+  status: string
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+  milestones: RehabMilestoneData[]
+}
+
 export interface PropertyDetailData {
   id: string
   entityId: string
@@ -161,6 +201,7 @@ export interface PropertyDetailData {
   cityNotices: CityNoticeData[]
   documents: DocumentData[]
   photos: PhotoData[]
+  inspections: InspectionData[]
   recentActivity: ActivityLogEntry[]
   recentPayments: PaymentData[]
   recentExpenses: ExpenseData[]

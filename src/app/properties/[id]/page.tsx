@@ -30,6 +30,7 @@ export default async function PropertyDetailPage({
         insurancePolicies: { orderBy: { effectiveDate: 'desc' } },
         propertyTaxes: { orderBy: { taxYear: 'desc' } },
         cityNotices: { orderBy: { createdAt: 'desc' } },
+        inspections: { orderBy: { scheduledDate: 'desc' } },
         documents: { orderBy: { uploadedAt: 'desc' } },
         photos: { orderBy: { uploadedAt: 'desc' } },
         payments: {
@@ -212,6 +213,18 @@ export default async function PropertyDetailPage({
       documentUrl: n.documentUrl,
       createdAt: n.createdAt.toISOString(),
       updatedAt: n.updatedAt.toISOString(),
+    })),
+    inspections: property.inspections.map(i => ({
+      id: i.id,
+      inspectionType: i.inspectionType,
+      scheduledDate: i.scheduledDate?.toISOString().split('T')[0] ?? null,
+      completedDate: i.completedDate?.toISOString().split('T')[0] ?? null,
+      inspector: i.inspector,
+      result: i.result,
+      deficiencies: i.deficiencies,
+      reinspectionDeadline: i.reinspectionDeadline?.toISOString().split('T')[0] ?? null,
+      notes: i.notes,
+      createdAt: i.createdAt.toISOString(),
     })),
     documents: property.documents.map(d => ({
       id: d.id,
