@@ -1,0 +1,3 @@
+address,unit,city,state,zip,entity_name,parcel_number,type,beds,baths,sqft,year_built,is_section_8,status,vacant_since,neighborhood,ward
+"1815 Arsenal St","","St. Louis","MO","63118","Entity A LLC","1234-56-789","single_family",3,1,1100,1924,true,"occupied","","Fox Park","9"
+"2100 Gravois Ave","Unit 2","St. Louis","MO","63104","Entity B LLC","","duplex",2,1,900,1930,true,"vacant","2025-01-15","Gravois Park","20"
