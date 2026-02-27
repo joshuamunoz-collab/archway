@@ -121,6 +121,17 @@ export interface ExpenseData {
   source: string
 }
 
+export interface MonthlyChartPoint {
+  month: string   // e.g. "Jan 25"
+  income: number
+  expenses: number
+}
+
+export interface CategoryChartPoint {
+  category: string
+  amount: number
+}
+
 export interface PropertyDetailData {
   id: string
   entityId: string
@@ -157,4 +168,6 @@ export interface PropertyDetailData {
   ytdExpenses: number
   mtdIncome: number
   mtdExpenses: number
+  monthlyChartData: MonthlyChartPoint[]
+  expenseByCategoryData: CategoryChartPoint[]
 }

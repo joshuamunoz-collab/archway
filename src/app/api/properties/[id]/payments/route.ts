@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createClient } from '@/lib/supabase/server'
+import { createPmFeeExpense } from '@/lib/pm-fee'
 
 export async function POST(
   request: Request,
@@ -42,6 +43,17 @@ export async function POST(
       userId: user.id,
     },
   })
+
+  // Auto-create PM management fee expense for HAP/copay payments
+  if ((status || 'received') === 'received' && ['hap', 'copay'].includes(type)) {
+    await createPmFeeExpense({
+      propertyId,
+      paymentId: payment.id,
+      paymentType: type,
+      paymentAmount: Number(amount),
+      paymentDate: new Date(date),
+    })
+  }
 
   return NextResponse.json(payment, { status: 201 })
 }

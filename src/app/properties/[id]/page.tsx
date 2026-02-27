@@ -2,7 +2,8 @@ import { notFound } from 'next/navigation'
 import { AppShell } from '@/components/shared/app-shell'
 import { prisma } from '@/lib/prisma'
 import { PropertyDetail } from '@/components/property/property-detail'
-import type { PropertyDetailData } from '@/types/property'
+import type { PropertyDetailData, MonthlyChartPoint, CategoryChartPoint } from '@/types/property'
+import { getCategoryLabel } from '@/lib/expense-categories'
 
 export default async function PropertyDetailPage({
   params,
@@ -13,8 +14,9 @@ export default async function PropertyDetailPage({
   const now = new Date()
   const ytdStart = new Date(now.getFullYear(), 0, 1)
   const mtdStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const trailing12Start = new Date(now.getFullYear(), now.getMonth() - 11, 1)
 
-  const [property, ytdIncomeAgg, ytdExpensesAgg, mtdIncomeAgg, mtdExpensesAgg] = await Promise.all([
+  const [property, ytdIncomeAgg, ytdExpensesAgg, mtdIncomeAgg, mtdExpensesAgg, chartPayments, chartExpenses] = await Promise.all([
     prisma.property.findUnique({
       where: { id },
       include: {
@@ -32,12 +34,12 @@ export default async function PropertyDetailPage({
         photos: { orderBy: { uploadedAt: 'desc' } },
         payments: {
           orderBy: { date: 'desc' },
-          take: 20,
+          take: 50,
           select: { id: true, date: true, amount: true, type: true, status: true, referenceNumber: true, notes: true },
         },
         expenses: {
           orderBy: { date: 'desc' },
-          take: 20,
+          take: 50,
           select: { id: true, date: true, amount: true, category: true, subcategory: true, vendor: true, description: true, source: true },
         },
       },
@@ -58,9 +60,56 @@ export default async function PropertyDetailPage({
       where: { propertyId: id, date: { gte: mtdStart } },
       _sum: { amount: true },
     }),
+    // Trailing 12-month payments for chart
+    prisma.payment.findMany({
+      where: { propertyId: id, date: { gte: trailing12Start }, status: { not: 'nsf' } },
+      select: { date: true, amount: true },
+    }),
+    // Trailing 12-month expenses for chart
+    prisma.expense.findMany({
+      where: { propertyId: id, date: { gte: trailing12Start } },
+      select: { date: true, amount: true, category: true },
+    }),
   ])
 
   if (!property) notFound()
+
+  // Build monthly chart data (trailing 12 months)
+  const monthlyMap: Record<string, { income: number; expenses: number }> = {}
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    monthlyMap[key] = { income: 0, expenses: 0 }
+  }
+  for (const p of chartPayments) {
+    const key = `${p.date.getFullYear()}-${String(p.date.getMonth() + 1).padStart(2, '0')}`
+    if (monthlyMap[key]) monthlyMap[key].income += Number(p.amount)
+  }
+  for (const e of chartExpenses) {
+    const key = `${e.date.getFullYear()}-${String(e.date.getMonth() + 1).padStart(2, '0')}`
+    if (monthlyMap[key]) monthlyMap[key].expenses += Number(e.amount)
+  }
+  const monthlyChartData: MonthlyChartPoint[] = Object.entries(monthlyMap).map(([key, val]) => {
+    const [yr, mo] = key.split('-')
+    const d = new Date(Number(yr), Number(mo) - 1, 1)
+    return {
+      month: d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+      income: Math.round(val.income * 100) / 100,
+      expenses: Math.round(val.expenses * 100) / 100,
+    }
+  })
+
+  // Build expense-by-category data (YTD)
+  const catMap: Record<string, number> = {}
+  for (const e of chartExpenses) {
+    const d = new Date(e.date)
+    if (d >= ytdStart) {
+      catMap[e.category] = (catMap[e.category] ?? 0) + Number(e.amount)
+    }
+  }
+  const expenseByCategoryData: CategoryChartPoint[] = Object.entries(catMap)
+    .map(([category, amount]) => ({ category: getCategoryLabel(category), amount: Math.round(amount * 100) / 100 }))
+    .sort((a, b) => b.amount - a.amount)
 
   // Load activity log separately (entityType='property', entityId=id)
   const activityLog = await prisma.activityLog.findMany({
@@ -213,6 +262,8 @@ export default async function PropertyDetailPage({
     ytdExpenses: Number(ytdExpensesAgg._sum.amount ?? 0),
     mtdIncome: Number(mtdIncomeAgg._sum.amount ?? 0),
     mtdExpenses: Number(mtdExpensesAgg._sum.amount ?? 0),
+    monthlyChartData,
+    expenseByCategoryData,
   }
 
   return (
