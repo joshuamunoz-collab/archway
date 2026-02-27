@@ -12,9 +12,10 @@ import {
   type SortingState,
   type ColumnFiltersState,
 } from '@tanstack/react-table'
-import { ArrowUpDown, ArrowUp, ArrowDown, ChevronRight, Search } from 'lucide-react'
+import { ArrowUpDown, ArrowUp, ArrowDown, ChevronRight, Search, Download } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { downloadCsv, downloadXlsx } from '@/lib/export'
 import {
   Select,
   SelectContent,
@@ -296,6 +297,54 @@ export function PropertyTable({
         <span className="text-xs text-muted-foreground ml-auto">
           {rows.length} of {data.length} shown
         </span>
+
+        {/* Export buttons */}
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 text-xs gap-1.5"
+          onClick={() => {
+            const exportRows = rows.map(r => r.original).map(p => ({
+              Address: p.addressLine1,
+              Unit: p.addressLine2 ?? '',
+              Status: p.status,
+              Entity: p.entityName,
+              'Section 8': p.isSection8 ? 'Yes' : 'No',
+              Type: p.propertyType ?? '',
+              Beds: p.beds ?? '',
+              Baths: p.baths ?? '',
+              Neighborhood: p.neighborhood ?? '',
+              Ward: p.ward ?? '',
+              'Vacant Since': p.vacantSince ?? '',
+            }))
+            downloadCsv(`properties_${new Date().toISOString().split('T')[0]}.csv`, exportRows)
+          }}
+        >
+          <Download className="h-3.5 w-3.5" /> CSV
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 text-xs gap-1.5"
+          onClick={() => {
+            const exportRows = rows.map(r => r.original).map(p => ({
+              Address: p.addressLine1,
+              Unit: p.addressLine2 ?? '',
+              Status: p.status,
+              Entity: p.entityName,
+              'Section 8': p.isSection8 ? 'Yes' : 'No',
+              Type: p.propertyType ?? '',
+              Beds: p.beds ?? '',
+              Baths: p.baths ?? '',
+              Neighborhood: p.neighborhood ?? '',
+              Ward: p.ward ?? '',
+              'Vacant Since': p.vacantSince ?? '',
+            }))
+            downloadXlsx(`properties_${new Date().toISOString().split('T')[0]}.xlsx`, exportRows, 'Properties')
+          }}
+        >
+          <Download className="h-3.5 w-3.5" /> XLSX
+        </Button>
       </div>
 
       {/* Table */}
