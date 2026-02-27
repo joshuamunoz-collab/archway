@@ -51,6 +51,7 @@ for (const user of USERS) {
   console.log(`  ✓ Auth user created: ${userId}`)
 
   // 2. Insert user_profiles row (id must match auth.users)
+  const now = new Date().toISOString()
   const { error: profileError } = await supabase
     .from('user_profiles')
     .insert({
@@ -58,6 +59,8 @@ for (const user of USERS) {
       email: user.email,
       full_name: user.fullName,
       role: user.role,
+      created_at: now,
+      updated_at: now,
     })
 
   if (profileError) {
