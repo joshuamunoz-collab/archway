@@ -13,6 +13,7 @@ export default async function DashboardPage() {
   const lmEnd    = new Date(now.getFullYear(), now.getMonth(), 0)
   const in60Days = new Date(now.getTime() + 60 * 86_400_000)
   const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1)
+  const cutoff48h = new Date(now.getTime() - 48 * 60 * 60 * 1000)
 
   const [
     properties,
@@ -25,6 +26,8 @@ export default async function DashboardPage() {
     trailingPayments,
     trailingExpenses,
     entities,
+    overdueTasks,
+    unacknowledgedTasks,
   ] = await Promise.all([
     prisma.property.findMany({
       select: {
@@ -92,6 +95,32 @@ export default async function DashboardPage() {
       select: { date: true, amount: true },
     }),
     prisma.entity.findMany({ select: { id: true, name: true } }),
+    // Overdue tasks: past due date, not completed
+    prisma.pmTask.findMany({
+      where: {
+        status: { not: 'completed' },
+        dueDate: { lt: now },
+      },
+      select: {
+        id: true, title: true, priority: true, dueDate: true,
+        property: { select: { addressLine1: true } },
+      },
+      take: 10,
+      orderBy: { dueDate: 'asc' },
+    }),
+    // Unacknowledged tasks: created >48h ago, not yet acknowledged/in-progress/completed
+    prisma.pmTask.findMany({
+      where: {
+        status: { in: ['created', 'sent_to_pm'] },
+        createdAt: { lt: cutoff48h },
+      },
+      select: {
+        id: true, title: true, priority: true, dueDate: true,
+        property: { select: { addressLine1: true } },
+      },
+      take: 10,
+      orderBy: { createdAt: 'asc' },
+    }),
   ])
 
   // ── Status counts ────────────────────────────────────────────────────────────
@@ -222,6 +251,22 @@ export default async function DashboardPage() {
             propertyAddress: l.property.addressLine1,
             tenantName: `${l.tenant.firstName} ${l.tenant.lastName}`,
             endDate: l.endDate?.toISOString().split('T')[0] ?? '',
+          }))}
+          overdueTasks={overdueTasks.map(t => ({
+            id: t.id,
+            title: t.title,
+            propertyAddress: t.property?.addressLine1 ?? null,
+            dueDate: t.dueDate?.toISOString().split('T')[0] ?? null,
+            priority: t.priority,
+            isUnacknowledged: false,
+          }))}
+          unacknowledgedTasks={unacknowledgedTasks.map(t => ({
+            id: t.id,
+            title: t.title,
+            propertyAddress: t.property?.addressLine1 ?? null,
+            dueDate: t.dueDate?.toISOString().split('T')[0] ?? null,
+            priority: t.priority,
+            isUnacknowledged: true,
           }))}
         />
 

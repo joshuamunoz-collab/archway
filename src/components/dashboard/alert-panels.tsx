@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { AlertCircle, AlertTriangle, Clock, FileWarning } from 'lucide-react'
+import { AlertCircle, AlertTriangle, Clock, FileWarning, ClipboardList } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getVacancyDays, getVacancyUrgency } from '@/lib/vacancy'
@@ -31,11 +31,22 @@ interface ExpiringLease {
   endDate: string
 }
 
+interface OverdueTask {
+  id: string
+  title: string
+  propertyAddress: string | null
+  dueDate: string | null
+  priority: string
+  isUnacknowledged: boolean
+}
+
 interface AlertPanelsProps {
   highRiskVacant: VacantProperty[]    // 45+ days
   watchVacant: VacantProperty[]       // 30–44 days
   openNotices: OpenNotice[]
   expiringLeases: ExpiringLease[]
+  overdueTasks?: OverdueTask[]
+  unacknowledgedTasks?: OverdueTask[]
 }
 
 export function AlertPanels({
@@ -43,9 +54,11 @@ export function AlertPanels({
   watchVacant,
   openNotices,
   expiringLeases,
+  overdueTasks = [],
+  unacknowledgedTasks = [],
 }: AlertPanelsProps) {
-  const hasRedAlerts = highRiskVacant.length > 0 || openNotices.filter(n => n.status === 'overdue').length > 0
-  const hasYellowAlerts = watchVacant.length > 0 || expiringLeases.length > 0 || openNotices.filter(n => n.status !== 'overdue').length > 0
+  const hasRedAlerts = highRiskVacant.length > 0 || openNotices.filter(n => n.status === 'overdue').length > 0 || overdueTasks.length > 0
+  const hasYellowAlerts = watchVacant.length > 0 || expiringLeases.length > 0 || openNotices.filter(n => n.status !== 'overdue').length > 0 || unacknowledgedTasks.length > 0
 
   if (!hasRedAlerts && !hasYellowAlerts) {
     return (
@@ -105,6 +118,22 @@ export function AlertPanels({
                   <p className="text-xs text-muted-foreground truncate">{notice.noticeType || 'City Notice'}</p>
                 </div>
                 <Badge variant="destructive" className="text-xs shrink-0">Overdue</Badge>
+              </Link>
+            ))}
+            {overdueTasks.map(task => (
+              <Link
+                key={task.id}
+                href={`/tasks/${task.id}`}
+                className="flex items-center gap-2 rounded-md border border-red-200 p-2.5 hover:bg-red-50 transition-colors text-sm"
+              >
+                <ClipboardList className="h-4 w-4 text-red-500 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{task.title}</p>
+                  {task.propertyAddress && (
+                    <p className="text-xs text-muted-foreground truncate">{task.propertyAddress}</p>
+                  )}
+                </div>
+                <Badge variant="destructive" className="text-xs shrink-0">Task Overdue</Badge>
               </Link>
             ))}
           </CardContent>
@@ -168,6 +197,22 @@ export function AlertPanels({
                     {notice.deadline ? ` · due ${formatDate(notice.deadline)}` : ''}
                   </p>
                 </div>
+              </Link>
+            ))}
+            {unacknowledgedTasks.map(task => (
+              <Link
+                key={task.id}
+                href={`/tasks/${task.id}`}
+                className="flex items-center gap-2 rounded-md border border-amber-200 p-2.5 hover:bg-amber-50/50 transition-colors text-sm"
+              >
+                <ClipboardList className="h-4 w-4 text-amber-500 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{task.title}</p>
+                  {task.propertyAddress && (
+                    <p className="text-xs text-muted-foreground truncate">{task.propertyAddress}</p>
+                  )}
+                </div>
+                <span className="text-xs text-amber-600 font-medium shrink-0">Not acknowledged</span>
               </Link>
             ))}
           </CardContent>

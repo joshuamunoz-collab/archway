@@ -30,6 +30,12 @@ export function formatDateShort(date: Date | string | null | undefined): string 
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+export function formatDateTime(date: Date | string | null | undefined): string {
+  if (!date) return '—'
+  const d = typeof date === 'string' ? new Date(date) : date
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
 export function daysFromNow(date: Date | string | null | undefined): number | null {
   if (!date) return null
   const d = typeof date === 'string' ? new Date(date) : date
