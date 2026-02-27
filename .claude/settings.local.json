@@ -5,7 +5,11 @@
       "Bash(npx tsc:*)",
       "Bash(ls:*)",
       "Bash(npx prisma:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(gh:*)",
+      "Bash(vercel:*)",
+      "Bash(git add:*)",
+      "Bash(git:*)"
     ]
   }
 }
