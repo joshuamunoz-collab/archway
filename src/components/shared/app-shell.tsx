@@ -5,14 +5,19 @@ import { Sidebar } from './sidebar'
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-  if (!user) redirect('/login')
+  if (authError || !user) redirect('/login')
 
-  const profile = await prisma.userProfile.findUnique({
-    where: { id: user.id },
-    select: { fullName: true, email: true },
-  })
+  let profile = null
+  try {
+    profile = await prisma.userProfile.findUnique({
+      where: { id: user.id },
+      select: { fullName: true, email: true },
+    })
+  } catch {
+    // DB unavailable — still render the shell with fallback user info
+  }
 
   const userName = profile?.fullName ?? user.email ?? 'User'
   const userEmail = profile?.email ?? user.email ?? ''
