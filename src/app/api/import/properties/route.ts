@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
   // Pre-load all entities for lookup
   const entities = await prisma.entity.findMany({ select: { id: true, name: true } })
-  const entityMap = new Map(entities.map(e => [e.name.toLowerCase().trim(), e.id]))
+  const entityMap = new Map(entities.map((e: { id: string; name: string }) => [e.name.toLowerCase().trim(), e.id]))
 
   const results: { row: number; address: string; success: boolean; error?: string }[] = []
 
