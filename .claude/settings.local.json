@@ -22,7 +22,8 @@
       "WebFetch(domain:api.vercel.com)",
       "Bash(curl:*)",
       "Bash(npx next:*)",
-      "Bash(do:*)"
+      "Bash(do:*)",
+      "Bash(do grep:*)"
     ]
   }
 }
