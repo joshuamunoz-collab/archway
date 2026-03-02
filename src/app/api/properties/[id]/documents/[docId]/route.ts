@@ -11,7 +11,22 @@ export async function DELETE(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id, docId } = await params
-  await prisma.document.delete({ where: { id: docId, propertyId: id } })
 
-  return NextResponse.json({ success: true })
+  try {
+    await prisma.document.delete({ where: { id: docId, propertyId: id } })
+
+    await prisma.activityLog.create({
+      data: {
+        entityType: 'property',
+        entityId: id,
+        action: 'document_deleted',
+        details: { docId },
+        userId: user.id,
+      },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch {
+    return NextResponse.json({ error: 'Document not found' }, { status: 404 })
+  }
 }

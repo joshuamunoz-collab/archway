@@ -1,10 +1,19 @@
 export const dynamic = 'force-dynamic'
 
+import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/shared/app-shell'
 import { EntityManager } from '@/components/dashboard/entity-manager'
 import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
 
 export default async function EntitiesPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const caller = await prisma.userProfile.findUnique({ where: { id: user.id } })
+  if (!caller || caller.role !== 'admin') redirect('/dashboard')
+
   const entities = await prisma.entity.findMany({
     include: { bankAccounts: { orderBy: { accountType: 'asc' } } },
     orderBy: { name: 'asc' },

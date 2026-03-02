@@ -74,9 +74,11 @@ export function GlobalSearch() {
           setResults(data)
           const hasResults = data.properties.length > 0 || data.tenants.length > 0 || data.tasks.length > 0
           setOpen(hasResults || query.length >= 2)
+        } else {
+          setResults(null)
         }
       } catch {
-        // ignore fetch errors
+        setResults(null)
       } finally {
         setLoading(false)
       }

@@ -88,8 +88,22 @@ export async function DELETE(
 
   const { id } = await params
 
-  await prisma.pmTaskMessage.deleteMany({ where: { taskId: id } })
-  await prisma.pmTask.delete({ where: { id } })
+  try {
+    await prisma.pmTaskMessage.deleteMany({ where: { taskId: id } })
+    await prisma.pmTask.delete({ where: { id } })
 
-  return NextResponse.json({ ok: true })
+    await prisma.activityLog.create({
+      data: {
+        entityType: 'task',
+        entityId: id,
+        action: 'task_deleted',
+        details: {},
+        userId: user.id,
+      },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch {
+    return NextResponse.json({ error: 'Task not found' }, { status: 404 })
+  }
 }

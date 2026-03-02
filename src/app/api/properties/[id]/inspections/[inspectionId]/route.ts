@@ -10,7 +10,7 @@ export async function PATCH(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { inspectionId } = await params
+  const { id, inspectionId } = await params
   const body = await request.json()
 
   const updateData: Record<string, unknown> = {}
@@ -23,12 +23,26 @@ export async function PATCH(
   if (body.reinspectionDeadline !== undefined) updateData.reinspectionDeadline = body.reinspectionDeadline ? new Date(body.reinspectionDeadline) : null
   if (body.notes !== undefined) updateData.notes = body.notes?.trim() || null
 
-  const inspection = await prisma.inspection.update({
-    where: { id: inspectionId },
-    data: updateData,
-  })
+  try {
+    const inspection = await prisma.inspection.update({
+      where: { id: inspectionId },
+      data: updateData,
+    })
 
-  return NextResponse.json(inspection)
+    await prisma.activityLog.create({
+      data: {
+        entityType: 'property',
+        entityId: id,
+        action: 'inspection_updated',
+        details: { inspectionId, changes: Object.keys(updateData) },
+        userId: user.id,
+      },
+    })
+
+    return NextResponse.json(inspection)
+  } catch {
+    return NextResponse.json({ error: 'Inspection not found' }, { status: 404 })
+  }
 }
 
 export async function DELETE(
@@ -39,7 +53,23 @@ export async function DELETE(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { inspectionId } = await params
-  await prisma.inspection.delete({ where: { id: inspectionId } })
-  return NextResponse.json({ ok: true })
+  const { id, inspectionId } = await params
+
+  try {
+    await prisma.inspection.delete({ where: { id: inspectionId } })
+
+    await prisma.activityLog.create({
+      data: {
+        entityType: 'property',
+        entityId: id,
+        action: 'inspection_deleted',
+        details: { inspectionId },
+        userId: user.id,
+      },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch {
+    return NextResponse.json({ error: 'Inspection not found' }, { status: 404 })
+  }
 }

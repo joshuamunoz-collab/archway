@@ -140,7 +140,7 @@ export function Sidebar({ userEmail, userName }: SidebarProps) {
         <div className="flex items-center gap-2 px-2 py-1.5 mb-1">
           <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
             <span className="text-xs font-semibold text-primary">
-              {userName.charAt(0).toUpperCase()}
+              {(userName?.[0] ?? 'U').toUpperCase()}
             </span>
           </div>
           <div className="min-w-0">

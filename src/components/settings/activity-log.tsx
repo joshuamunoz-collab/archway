@@ -49,16 +49,26 @@ export function ActivityLog() {
   const [entityType, setEntityType] = useState('all')
   const [loading, setLoading] = useState(true)
 
+  const [error, setError] = useState<string | null>(null)
+
   const fetchLogs = useCallback(async () => {
     setLoading(true)
-    const params = new URLSearchParams({ page: String(page), limit: '50' })
-    if (entityType !== 'all') params.set('entityType', entityType)
-    const res = await fetch(`/api/activity?${params}`)
-    const data = await res.json()
-    setLogs(data.logs ?? [])
-    setTotal(data.total ?? 0)
-    setPages(data.pages ?? 1)
-    setLoading(false)
+    setError(null)
+    try {
+      const params = new URLSearchParams({ page: String(page), limit: '50' })
+      if (entityType !== 'all') params.set('entityType', entityType)
+      const res = await fetch(`/api/activity?${params}`)
+      if (!res.ok) throw new Error('Failed to load activity log')
+      const data = await res.json()
+      setLogs(data.logs ?? [])
+      setTotal(data.total ?? 0)
+      setPages(data.pages ?? 1)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load')
+      setLogs([])
+    } finally {
+      setLoading(false)
+    }
   }, [page, entityType])
 
   useEffect(() => { fetchLogs() }, [fetchLogs])
@@ -89,6 +99,11 @@ export function ActivityLog() {
       <CardContent className="p-0">
         {loading ? (
           <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
+        ) : error ? (
+          <div className="py-10 text-center">
+            <p className="text-sm text-destructive">{error}</p>
+            <Button variant="outline" size="sm" className="mt-2" onClick={fetchLogs}>Retry</Button>
+          </div>
         ) : logs.length === 0 ? (
           <div className="py-10 text-center">
             <p className="text-sm text-muted-foreground">No activity found</p>

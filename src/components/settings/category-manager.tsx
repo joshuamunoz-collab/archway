@@ -87,8 +87,12 @@ export function CategoryManager({ initial }: { initial: Category[] }) {
       }
       return next
     })
-    // Auto-expand when adding subcategory
-    setExpandedCats(prev => new Set(prev).add(categories[catIndex].value))
+    // Auto-expand when adding subcategory — read from updated state
+    setCategories(prev => {
+      const catKey = prev[catIndex]?.value || `new-${catIndex}`
+      setExpandedCats(ex => new Set(ex).add(catKey))
+      return prev
+    })
     setHasChanges(true)
   }
 

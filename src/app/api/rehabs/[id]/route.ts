@@ -72,8 +72,22 @@ export async function DELETE(
 
   const { id } = await params
 
-  await prisma.rehabMilestone.deleteMany({ where: { rehabProjectId: id } })
-  await prisma.rehabProject.delete({ where: { id } })
+  try {
+    await prisma.rehabMilestone.deleteMany({ where: { rehabProjectId: id } })
+    await prisma.rehabProject.delete({ where: { id } })
 
-  return NextResponse.json({ ok: true })
+    await prisma.activityLog.create({
+      data: {
+        entityType: 'rehab',
+        entityId: id,
+        action: 'rehab_deleted',
+        details: {},
+        userId: user.id,
+      },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch {
+    return NextResponse.json({ error: 'Rehab project not found' }, { status: 404 })
+  }
 }

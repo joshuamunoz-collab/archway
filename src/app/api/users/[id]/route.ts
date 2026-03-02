@@ -36,20 +36,24 @@ export async function PATCH(
   if (phone !== undefined) data.phone = phone?.trim() || null
   if (isActive !== undefined) data.isActive = isActive
 
-  const updated = await prisma.userProfile.update({
-    where: { id },
-    data,
-  })
+  try {
+    const updated = await prisma.userProfile.update({
+      where: { id },
+      data,
+    })
 
-  await prisma.activityLog.create({
-    data: {
-      entityType: 'user',
-      entityId: id,
-      action: 'updated',
-      details: data as Prisma.InputJsonValue,
-      userId: user.id,
-    },
-  })
+    await prisma.activityLog.create({
+      data: {
+        entityType: 'user',
+        entityId: id,
+        action: 'updated',
+        details: data as Prisma.InputJsonValue,
+        userId: user.id,
+      },
+    })
 
-  return NextResponse.json(updated)
+    return NextResponse.json(updated)
+  } catch {
+    return NextResponse.json({ error: 'User not found' }, { status: 404 })
+  }
 }

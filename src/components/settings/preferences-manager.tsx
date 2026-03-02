@@ -31,6 +31,23 @@ export function PreferencesManager({ initial }: { initial: Preferences }) {
   }
 
   async function handleSave() {
+    // Validate thresholds are positive and in correct order
+    if (prefs.defaultPmFeePct < 0 || prefs.defaultPmFeePct > 100) {
+      toast.error('PM fee must be between 0 and 100'); return
+    }
+    if (prefs.vacancyWarningDays < 1 || prefs.vacancyUrgentDays < 1 || prefs.vacancyCriticalDays < 1) {
+      toast.error('Vacancy thresholds must be at least 1 day'); return
+    }
+    if (prefs.vacancyWarningDays >= prefs.vacancyUrgentDays || prefs.vacancyUrgentDays >= prefs.vacancyCriticalDays) {
+      toast.error('Vacancy thresholds must be in ascending order (warning < urgent < critical)'); return
+    }
+    if (prefs.taskEscalationHours < 1) {
+      toast.error('Escalation threshold must be at least 1 hour'); return
+    }
+    if (prefs.leaseExpiryWarningDays < 1) {
+      toast.error('Lease expiry warning must be at least 1 day'); return
+    }
+
     setSaving(true)
     try {
       const res = await fetch('/api/settings/preferences', {

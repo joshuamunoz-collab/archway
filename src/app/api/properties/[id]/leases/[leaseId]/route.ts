@@ -49,5 +49,15 @@ export async function PATCH(
     },
   })
 
-  return NextResponse.json(lease)
+  // Convert Prisma Decimal fields to numbers for JSON serialization
+  const serialized = {
+    ...lease,
+    contractRent: Number(lease.contractRent),
+    hapAmount: lease.hapAmount ? Number(lease.hapAmount) : null,
+    tenantCopay: lease.tenantCopay ? Number(lease.tenantCopay) : null,
+    utilityAllowance: lease.utilityAllowance ? Number(lease.utilityAllowance) : null,
+    paymentStandard: lease.paymentStandard ? Number(lease.paymentStandard) : null,
+  }
+
+  return NextResponse.json(serialized)
 }

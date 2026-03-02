@@ -11,7 +11,22 @@ export async function DELETE(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id, photoId } = await params
-  await prisma.photo.delete({ where: { id: photoId, propertyId: id } })
 
-  return NextResponse.json({ success: true })
+  try {
+    await prisma.photo.delete({ where: { id: photoId, propertyId: id } })
+
+    await prisma.activityLog.create({
+      data: {
+        entityType: 'property',
+        entityId: id,
+        action: 'photo_deleted',
+        details: { photoId },
+        userId: user.id,
+      },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch {
+    return NextResponse.json({ error: 'Photo not found' }, { status: 404 })
+  }
 }

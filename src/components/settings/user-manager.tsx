@@ -109,6 +109,7 @@ export function UserManager({ initial }: { initial: UserProfile[] }) {
         toast.success('User updated')
       } else {
         if (!email.trim()) { toast.error('Email is required'); setSaving(false); return }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { toast.error('Invalid email format'); setSaving(false); return }
         const res = await fetch('/api/users', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

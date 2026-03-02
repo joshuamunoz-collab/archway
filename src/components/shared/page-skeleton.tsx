@@ -131,6 +131,27 @@ export function KanbanSkeleton() {
   )
 }
 
+export function SettingsPageSkeleton() {
+  return (
+    <div className="p-6 lg:p-8 max-w-5xl space-y-6">
+      <div className="space-y-1">
+        <Skeleton className="h-7 w-36" />
+        <Skeleton className="h-4 w-56" />
+      </div>
+      <div className="rounded-lg border bg-card p-5 space-y-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex gap-6 items-center">
+            <Skeleton className="h-4 flex-1" />
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-8 w-16" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function DetailPageSkeleton() {
   return (
     <div className="p-6 lg:p-8 space-y-6">
