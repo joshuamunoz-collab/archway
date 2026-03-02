@@ -13,22 +13,23 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   let profile = null
   let logoUrl = ''
   try {
-    const [profileResult, prefResult] = await Promise.all([
-      prisma.userProfile.findUnique({
-        where: { id: user.id },
-        select: { fullName: true, email: true },
-      }),
-      prisma.systemPreference.findUnique({
-        where: { key: 'app_preferences' },
-      }),
-    ])
-    profile = profileResult
-    if (prefResult?.value) {
-      const prefs = prefResult.value as Record<string, unknown>
+    profile = await prisma.userProfile.findUnique({
+      where: { id: user.id },
+      select: { fullName: true, email: true },
+    })
+  } catch {
+    // DB unavailable — still render the shell with fallback user info
+  }
+  try {
+    const pref = await prisma.systemPreference.findUnique({
+      where: { key: 'app_preferences' },
+    })
+    if (pref?.value) {
+      const prefs = pref.value as Record<string, unknown>
       logoUrl = (prefs.companyLogoUrl as string) ?? ''
     }
   } catch {
-    // DB unavailable — still render the shell with fallback user info
+    // Logo query failed — continue without logo
   }
 
   const userName = profile?.fullName ?? user.email ?? 'User'
