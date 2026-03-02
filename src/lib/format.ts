@@ -41,7 +41,3 @@ export function daysFromNow(date: Date | string | null | undefined): number | nu
   const d = typeof date === 'string' ? new Date(date) : date
   return Math.ceil((d.getTime() - Date.now()) / 86_400_000)
 }
-
-export function pluralize(n: number, singular: string, plural?: string): string {
-  return `${n} ${n === 1 ? singular : (plural ?? singular + 's')}`
-}

@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic'
+export const metadata = { title: 'Reports — Archway' }
 
 import { AppShell } from '@/components/shared/app-shell'
 import { prisma } from '@/lib/prisma'

@@ -1,20 +1,14 @@
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/auth'
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const caller = await prisma.userProfile.findUnique({ where: { id: user.id } })
-  if (!caller || caller.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
 
   const { id } = await params
   const body = await request.json()
@@ -26,7 +20,7 @@ export async function PATCH(
   }
 
   // Prevent admin from deactivating themselves
-  if (id === user.id && isActive === false) {
+  if (id === auth.user.id && isActive === false) {
     return NextResponse.json({ error: 'Cannot deactivate your own account' }, { status: 400 })
   }
 
@@ -48,7 +42,7 @@ export async function PATCH(
         entityId: id,
         action: 'updated',
         details: data as Prisma.InputJsonValue,
-        userId: user.id,
+        userId: auth.user.id,
       },
     })
 

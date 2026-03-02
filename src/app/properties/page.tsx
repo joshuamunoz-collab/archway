@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic'
+export const metadata = { title: 'Properties — Archway' }
 
 import { AppShell } from '@/components/shared/app-shell'
 import { PropertyTable, type PropertyRow } from '@/components/property/property-table'
@@ -34,7 +35,7 @@ export default async function PropertiesPage() {
 
   return (
     <AppShell>
-      <div className="p-8 max-w-7xl">
+      <div className="p-6 lg:p-8 max-w-7xl">
         <PropertyTable data={rows} entityNames={entityNames} />
       </div>
     </AppShell>

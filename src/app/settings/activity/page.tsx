@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic'
+export const metadata = { title: 'Activity Log — Archway' }
 
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/shared/app-shell'

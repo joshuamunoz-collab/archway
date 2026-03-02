@@ -30,16 +30,6 @@ export function downloadXlsx(filename: string, rows: Record<string, unknown>[], 
   XLSX.writeFile(wb, filename)
 }
 
-/** Download multiple sheets as a single .xlsx file. */
-export function downloadXlsxMultiSheet(filename: string, sheets: { name: string; rows: Record<string, unknown>[] }[]) {
-  const wb = XLSX.utils.book_new()
-  for (const { name, rows } of sheets) {
-    const ws = XLSX.utils.json_to_sheet(rows)
-    XLSX.utils.book_append_sheet(wb, ws, name)
-  }
-  XLSX.writeFile(wb, filename)
-}
-
 function triggerDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

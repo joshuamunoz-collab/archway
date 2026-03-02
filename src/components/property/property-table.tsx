@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { StatusBadge } from '@/components/shared/status-badge'
+import { getVacancyDays, getVacancyUrgency, VACANCY_TEXT_COLOR } from '@/lib/vacancy'
 import { cn } from '@/lib/utils'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -45,14 +46,10 @@ export interface PropertyRow {
 
 // ── Vacancy helpers ───────────────────────────────────────────────────────────
 
-function daysVacant(vacantSince: string): number {
-  return Math.floor((Date.now() - new Date(vacantSince).getTime()) / 86_400_000)
-}
-
 function vacancyUrgencyClass(days: number): string {
-  if (days >= 60) return 'text-red-600 font-semibold'
-  if (days >= 45) return 'text-orange-600 font-semibold'
-  if (days >= 30) return 'text-amber-600 font-medium'
+  const urgency = getVacancyUrgency(days)
+  if (urgency === 'critical' || urgency === 'urgent') return `${VACANCY_TEXT_COLOR[urgency]} font-semibold`
+  if (urgency === 'warning') return `${VACANCY_TEXT_COLOR[urgency]} font-medium`
   return 'text-muted-foreground'
 }
 
@@ -158,10 +155,10 @@ export function PropertyTable({
       {
         id: 'vacancy',
         header: 'Vacant',
-        accessorFn: row => (row.vacantSince ? daysVacant(row.vacantSince) : null),
+        accessorFn: row => (row.vacantSince ? getVacancyDays(row.vacantSince) : null),
         cell: ({ row }) => {
           if (!row.original.vacantSince) return null
-          const days = daysVacant(row.original.vacantSince)
+          const days = getVacancyDays(row.original.vacantSince)
           return (
             <span className={cn('text-sm tabular-nums', vacancyUrgencyClass(days))}>
               {days}d
@@ -169,8 +166,8 @@ export function PropertyTable({
           )
         },
         sortingFn: (a, b) => {
-          const da = a.original.vacantSince ? daysVacant(a.original.vacantSince) : -1
-          const db = b.original.vacantSince ? daysVacant(b.original.vacantSince) : -1
+          const da = a.original.vacantSince ? getVacancyDays(a.original.vacantSince) : -1
+          const db = b.original.vacantSince ? getVacancyDays(b.original.vacantSince) : -1
           return da - db
         },
         enableGlobalFilter: false,

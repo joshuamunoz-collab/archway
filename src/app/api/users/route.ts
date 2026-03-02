@@ -1,18 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  // Only admins can view users
-  const caller = await prisma.userProfile.findUnique({ where: { id: user.id } })
-  if (!caller || caller.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
 
   const users = await prisma.userProfile.findMany({
     orderBy: [{ isActive: 'desc' }, { fullName: 'asc' }],
@@ -22,14 +15,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const caller = await prisma.userProfile.findUnique({ where: { id: user.id } })
-  if (!caller || caller.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
 
   const body = await request.json()
   const { email, fullName, role, phone } = body
@@ -73,7 +60,7 @@ export async function POST(request: Request) {
       entityId: profile.id,
       action: 'created',
       details: { email: profile.email, role: profile.role },
-      userId: user.id,
+      userId: auth.user.id,
     },
   })
 

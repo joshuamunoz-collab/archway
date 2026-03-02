@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic'
+export const metadata = { title: 'Entities — Archway' }
 
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/shared/app-shell'
@@ -28,7 +29,7 @@ export default async function EntitiesPage() {
 
   return (
     <AppShell>
-      <div className="p-8 max-w-5xl">
+      <div className="p-6 lg:p-8 max-w-5xl">
         <EntityManager initial={serialized} />
       </div>
     </AppShell>

@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic'
+export const metadata = { title: 'Import — Archway' }
 
 import { AppShell } from '@/components/shared/app-shell'
 import { PropertyImporter } from '@/components/dashboard/property-importer'

@@ -165,6 +165,8 @@ model Lease {
   tenant   Tenant    @relation(fields: [tenantId], references: [id])
   payments Payment[]
 
+  @@index([tenantId], map: "idx_leases_tenant")
+  @@index([propertyId, status], map: "idx_leases_property_status")
   @@map("leases")
 }
 
@@ -256,9 +258,10 @@ model PmBillMessage {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
-  bill PmBill      @relation(fields: [billId], references: [id])
+  bill PmBill      @relation(fields: [billId], references: [id], onDelete: Cascade)
   user UserProfile @relation(fields: [userId], references: [id])
 
+  @@index([billId], map: "idx_pm_bill_messages_bill")
   @@map("pm_bill_messages")
 }
 
@@ -384,6 +387,8 @@ model PmTask {
   cityNotice CityNotice?     @relation(fields: [cityNoticeId], references: [id])
   messages   PmTaskMessage[]
 
+  @@index([propertyId], map: "idx_pm_tasks_property")
+  @@index([status], map: "idx_pm_tasks_status")
   @@map("pm_tasks")
 }
 
@@ -397,9 +402,10 @@ model PmTaskMessage {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
-  task PmTask      @relation(fields: [taskId], references: [id])
+  task PmTask      @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user UserProfile @relation(fields: [userId], references: [id])
 
+  @@index([taskId], map: "idx_pm_task_messages_task")
   @@map("pm_task_messages")
 }
 
@@ -442,8 +448,9 @@ model RehabMilestone {
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   // Relations
-  rehabProject RehabProject @relation(fields: [rehabProjectId], references: [id])
+  rehabProject RehabProject @relation(fields: [rehabProjectId], references: [id], onDelete: Cascade)
 
+  @@index([rehabProjectId], map: "idx_rehab_milestones_project")
   @@map("rehab_milestones")
 }
 
