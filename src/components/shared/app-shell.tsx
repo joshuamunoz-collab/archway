@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import { Sidebar } from './sidebar'
 import { GlobalSearch } from './global-search'
@@ -13,14 +12,16 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   let profile = null
   let logoUrl = ''
   try {
+    const { prisma } = await import('@/lib/prisma')
     profile = await prisma.userProfile.findUnique({
       where: { id: user.id },
       select: { fullName: true, email: true, role: true },
     })
   } catch {
-    // DB unavailable — still render the shell with fallback user info
+    // DB or Prisma unavailable — still render the shell with fallback user info
   }
   try {
+    const { prisma } = await import('@/lib/prisma')
     const pref = await prisma.systemPreference.findUnique({
       where: { key: 'app_preferences' },
     })
