@@ -61,8 +61,14 @@ export function PreferencesManager({ initial }: { initial: Preferences }) {
         body: JSON.stringify(prefs),
       })
       if (!res.ok) {
-        const e = await res.json()
-        throw new Error(e.error)
+        let message = 'Failed to save preferences'
+        try {
+          const e = await res.json()
+          message = e.error || message
+        } catch {
+          // Response body wasn't valid JSON
+        }
+        throw new Error(message)
       }
       const saved = await res.json()
       setPrefs(saved)
