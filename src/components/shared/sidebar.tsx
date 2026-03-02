@@ -66,12 +66,11 @@ export function Sidebar({ userEmail, userName, logoUrl }: SidebarProps) {
   return (
     <aside className="fixed inset-y-0 left-0 z-40 w-60 flex flex-col bg-white border-r border-border">
       {/* Wordmark */}
-      <div className="h-14 flex items-center px-5 shrink-0">
-        {logoUrl ? (
-          <img src={logoUrl} alt="Company logo" className="h-8 max-w-[160px] object-contain" />
-        ) : (
-          <span className="text-base font-semibold tracking-tight text-foreground">Archway</span>
+      <div className="h-14 flex items-center gap-2 px-5 shrink-0">
+        {logoUrl && (
+          <img src={logoUrl} alt="Company logo" className="h-8 object-contain" />
         )}
+        <span className="text-base font-semibold tracking-tight text-foreground">Archway</span>
       </div>
 
       <Separator />
