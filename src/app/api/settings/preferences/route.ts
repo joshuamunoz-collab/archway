@@ -13,6 +13,7 @@ export interface SystemPreferences {
   companyName: string
   companyPhone: string
   companyEmail: string
+  companyLogoUrl: string
 }
 
 export const DEFAULT_PREFERENCES: SystemPreferences = {
@@ -25,6 +26,7 @@ export const DEFAULT_PREFERENCES: SystemPreferences = {
   companyName: '',
   companyPhone: '',
   companyEmail: '',
+  companyLogoUrl: '',
 }
 
 export async function GET() {
@@ -57,6 +59,7 @@ export async function PUT(request: Request) {
     companyName: (body.companyName ?? '').trim(),
     companyPhone: (body.companyPhone ?? '').trim(),
     companyEmail: (body.companyEmail ?? '').trim(),
+    companyLogoUrl: (body.companyLogoUrl ?? '').trim(),
   }
 
   const jsonValue = JSON.parse(JSON.stringify(preferences)) as Prisma.InputJsonValue

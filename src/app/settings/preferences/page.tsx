@@ -17,6 +17,7 @@ const DEFAULT_PREFERENCES = {
   companyName: '',
   companyPhone: '',
   companyEmail: '',
+  companyLogoUrl: '',
 }
 
 export default async function PreferencesPage() {

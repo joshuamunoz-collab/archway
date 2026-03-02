@@ -1,12 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
+import { Upload, X } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 interface Preferences {
   defaultPmFeePct: number
@@ -18,12 +20,15 @@ interface Preferences {
   companyName: string
   companyPhone: string
   companyEmail: string
+  companyLogoUrl: string
 }
 
 export function PreferencesManager({ initial }: { initial: Preferences }) {
   const [prefs, setPrefs] = useState(initial)
   const [saving, setSaving] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   function update<K extends keyof Preferences>(key: K, value: Preferences[K]) {
     setPrefs(prev => ({ ...prev, [key]: value }))
@@ -75,6 +80,47 @@ export function PreferencesManager({ initial }: { initial: Preferences }) {
     setHasChanges(false)
   }
 
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Logo must be under 2 MB')
+      return
+    }
+
+    setUploading(true)
+    try {
+      const supabase = createClient()
+      const ext = file.name.split('.').pop() ?? 'png'
+      const path = `logo-${Date.now()}.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('branding')
+        .upload(path, file, { upsert: true })
+      if (uploadError) throw new Error(uploadError.message)
+
+      const { data: urlData } = supabase.storage
+        .from('branding')
+        .getPublicUrl(path)
+
+      update('companyLogoUrl', urlData.publicUrl)
+      toast.success('Logo uploaded — click "Save Changes" to apply')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  function handleLogoRemove() {
+    update('companyLogoUrl', '')
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -99,6 +145,62 @@ export function PreferencesManager({ initial }: { initial: Preferences }) {
       {/* Company Info */}
       <Card className="p-5 space-y-4">
         <h2 className="text-sm font-semibold text-foreground">Company Information</h2>
+
+        {/* Logo upload */}
+        <div className="space-y-2">
+          <Label className="text-xs">Company Logo</Label>
+          <div className="flex items-center gap-4">
+            {prefs.companyLogoUrl ? (
+              <div className="relative group">
+                <img
+                  src={prefs.companyLogoUrl}
+                  alt="Company logo"
+                  className="h-12 max-w-[200px] object-contain rounded border bg-white p-1"
+                />
+                <button
+                  type="button"
+                  onClick={handleLogoRemove}
+                  className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="h-12 w-36 border-2 border-dashed rounded flex items-center justify-center gap-1.5 text-muted-foreground text-xs cursor-pointer hover:bg-secondary/30 transition-colors disabled:opacity-50"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                {uploading ? 'Uploading...' : 'Upload logo'}
+              </button>
+            )}
+            {prefs.companyLogoUrl && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? 'Uploading...' : 'Change'}
+              </Button>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/svg+xml,image/webp"
+              className="hidden"
+              onChange={handleLogoUpload}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            PNG, JPEG, SVG, or WebP. Max 2 MB. Displayed in sidebar and login page.
+          </p>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-1.5">
             <Label className="text-xs">Company Name</Label>
