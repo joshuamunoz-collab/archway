@@ -17,10 +17,10 @@ export default async function ActivityPage() {
 
   return (
     <AppShell>
-      <div className="p-6 lg:p-8 max-w-4xl space-y-6">
+      <div className="px-8 py-6 max-w-4xl space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Activity Log</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">All system actions and mutations</p>
+          <h1 className="text-2xl font-bold text-gray-900">Activity Log</h1>
+          <p className="text-sm text-gray-500 mt-0.5">All system actions and mutations</p>
         </div>
         <ActivityLog />
       </div>

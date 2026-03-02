@@ -159,7 +159,7 @@ export function BillDetail({ bill }: { bill: BillDetailData }) {
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
+    <div className="px-8 py-6 max-w-3xl mx-auto space-y-6">
       {/* Back */}
       <Link href="/bills" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-3.5 w-3.5" /> All Bills
@@ -241,16 +241,16 @@ export function BillDetail({ bill }: { bill: BillDetailData }) {
         </CardHeader>
         <CardContent className="p-0">
           <table className="w-full text-sm">
-            <thead className="bg-secondary border-b border-border">
+            <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Description</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground hidden sm:table-cell">Category</th>
-                <th className="px-4 py-2.5 text-right text-xs font-medium text-muted-foreground">Amount</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Category</th>
+                <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {bill.lineItems.map(li => (
-                <tr key={li.id} className="hover:bg-secondary/30">
+                <tr key={li.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-2.5">{li.description}</td>
                   <td className="px-4 py-2.5 text-muted-foreground hidden sm:table-cell">
                     {li.category ? getCategoryLabel(li.category) : '—'}

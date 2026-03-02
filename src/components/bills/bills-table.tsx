@@ -303,12 +303,12 @@ export function BillsTable({
   }
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="px-8 py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-muted-foreground" />
-          <h1 className="text-xl font-semibold">PM Bills</h1>
+          <h1 className="text-2xl font-bold text-gray-900">PM Bills</h1>
           <span className="text-sm text-muted-foreground">({initialBills.length})</span>
         </div>
         <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
@@ -384,9 +384,9 @@ export function BillsTable({
           <p className="text-sm text-muted-foreground">No bills found.</p>
         </div>
       ) : (
-        <div className="rounded-lg border overflow-hidden">
+        <div className="rounded-xl border border-gray-200/60 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-secondary border-b border-border">
+            <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-3 py-2.5 w-10">
                   <Checkbox
@@ -394,18 +394,18 @@ export function BillsTable({
                     onCheckedChange={toggleAll}
                   />
                 </th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Date</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Property</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground hidden md:table-cell">Vendor</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground hidden lg:table-cell">Invoice #</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-2.5 text-right text-xs font-medium text-muted-foreground">Amount</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Property</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Vendor</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Invoice #</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                 <th className="w-28" />
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.map(bill => (
-                <tr key={bill.id} className="hover:bg-secondary/30">
+                <tr key={bill.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-3 py-2.5">
                     <Checkbox
                       checked={selected.has(bill.id)}

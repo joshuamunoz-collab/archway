@@ -120,7 +120,7 @@ export function FinancialsDashboard({
         </CardHeader>
         <CardContent className="p-0">
           <table className="w-full text-sm">
-            <thead className="bg-secondary border-b border-border">
+            <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Entity</th>
                 <th className="px-4 py-2.5 text-right text-xs font-medium text-muted-foreground">Income</th>
@@ -134,7 +134,7 @@ export function FinancialsDashboard({
                 const noi = e.ytdIncome - e.ytdExpenses
                 const noiPct = e.ytdIncome > 0 ? Math.round((noi / e.ytdIncome) * 100) : 0
                 return (
-                  <tr key={e.id} className="hover:bg-secondary/30">
+                  <tr key={e.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-2.5 font-medium">{e.name}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{formatCurrency(e.ytdIncome)}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums">{formatCurrency(e.ytdExpenses)}</td>

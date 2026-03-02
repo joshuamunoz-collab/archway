@@ -38,7 +38,7 @@ export default async function PreferencesPage() {
 
   return (
     <AppShell>
-      <div className="p-6 lg:p-8 max-w-3xl">
+      <div className="px-8 py-6 max-w-3xl">
         <PreferencesManager initial={preferences} />
       </div>
     </AppShell>

@@ -133,12 +133,12 @@ export function TenantTable({ tenants: initialTenants }: { tenants: TenantRow[] 
   }
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="px-8 py-6 space-y-6">
       {/* Page header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2">
           <Users className="h-5 w-5 text-muted-foreground" />
-          <h1 className="text-xl font-semibold">Tenants</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Tenants</h1>
           <span className="text-sm text-muted-foreground">({initialTenants.length})</span>
         </div>
         <Button size="sm" onClick={openAdd} className="gap-1.5">
@@ -166,22 +166,22 @@ export function TenantTable({ tenants: initialTenants }: { tenants: TenantRow[] 
           </p>
         </div>
       ) : (
-        <div className="rounded-lg border overflow-hidden">
+        <div className="rounded-xl border border-gray-200/60 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-secondary border-b border-border">
+            <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Name</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground hidden sm:table-cell">Phone / Email</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground hidden md:table-cell">Voucher #</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Current Property</th>
-                <th className="px-4 py-2.5 text-right text-xs font-medium text-muted-foreground hidden lg:table-cell">Rent</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground hidden lg:table-cell">Lease End</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Phone / Email</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Voucher #</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Property</th>
+                <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Rent</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Lease End</th>
                 <th className="w-20" />
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.map(tenant => (
-                <tr key={tenant.id} className="hover:bg-secondary/30">
+                <tr key={tenant.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 font-medium">
                     {tenant.firstName} {tenant.lastName}
                   </td>

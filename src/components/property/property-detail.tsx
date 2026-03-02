@@ -169,7 +169,7 @@ export function PropertyDetail({ data }: { data: PropertyDetailData }) {
       </div>
 
       {/* Tab content */}
-      <div className="p-6 lg:p-8">
+      <div className="px-8 py-6">
         {activeTab === 'overview'    && <OverviewTab data={data} />}
         {activeTab === 'section8'   && <Section8Tab data={data} />}
         {activeTab === 'financials' && <FinancialsTab data={data} />}

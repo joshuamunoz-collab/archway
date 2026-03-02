@@ -219,8 +219,8 @@ export default async function DashboardPage() {
       <div className="px-8 py-6 space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
             Portfolio overview for {now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </p>
         </div>
@@ -277,7 +277,7 @@ export default async function DashboardPage() {
         <PortfolioCharts monthlyData={monthlyData} entityIncome={entityIncome} />
 
         {/* Property Table */}
-        <div className="bg-white rounded-xl border border-border p-5">
+        <div className="bg-white rounded-xl border border-gray-200/60 shadow-sm p-5">
           <PropertyTable data={tableRows} entityNames={entityNames} />
         </div>
       </div>

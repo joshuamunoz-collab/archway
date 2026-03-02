@@ -2,7 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 export function TablePageSkeleton({ rows = 8, cols = 5 }: { rows?: number; cols?: number }) {
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="px-8 py-6 space-y-6">
       <div className="space-y-1">
         <Skeleton className="h-7 w-48" />
         <Skeleton className="h-4 w-72" />
@@ -32,7 +32,7 @@ export function TablePageSkeleton({ rows = 8, cols = 5 }: { rows?: number; cols?
 
 export function DashboardSkeleton() {
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="px-8 py-6 space-y-6">
       <div className="space-y-1">
         <Skeleton className="h-7 w-48" />
         <Skeleton className="h-4 w-64" />
@@ -64,7 +64,7 @@ export function DashboardSkeleton() {
 
 export function FinancialsSkeleton() {
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="px-8 py-6 space-y-6">
       <div className="space-y-1">
         <Skeleton className="h-7 w-36" />
         <Skeleton className="h-4 w-56" />
@@ -102,7 +102,7 @@ export function FinancialsSkeleton() {
 
 export function KanbanSkeleton() {
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="px-8 py-6 space-y-6">
       <div className="space-y-1">
         <Skeleton className="h-7 w-32" />
         <Skeleton className="h-4 w-56" />
@@ -133,7 +133,7 @@ export function KanbanSkeleton() {
 
 export function SettingsPageSkeleton() {
   return (
-    <div className="p-6 lg:p-8 max-w-5xl space-y-6">
+    <div className="px-8 py-6 max-w-5xl space-y-6">
       <div className="space-y-1">
         <Skeleton className="h-7 w-36" />
         <Skeleton className="h-4 w-56" />
@@ -154,7 +154,7 @@ export function SettingsPageSkeleton() {
 
 export function DetailPageSkeleton() {
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="px-8 py-6 space-y-6">
       <div className="flex items-start gap-4">
         <div className="flex-1 space-y-1">
           <Skeleton className="h-7 w-64" />

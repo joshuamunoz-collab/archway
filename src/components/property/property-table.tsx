@@ -89,7 +89,12 @@ export function PropertyTable({
         ),
         cell: ({ row }) => (
           <div>
-            <span className="font-medium text-foreground">{row.original.addressLine1}</span>
+            <Link
+              href={`/properties/${row.original.id}`}
+              className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+            >
+              {row.original.addressLine1}
+            </Link>
             {row.original.addressLine2 && (
               <span className="text-muted-foreground"> {row.original.addressLine2}</span>
             )}
@@ -223,7 +228,7 @@ export function PropertyTable({
       {/* Page header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Properties</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Properties</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {data.length} properties · {totalVacant} vacant
           </p>
@@ -345,15 +350,15 @@ export function PropertyTable({
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border border-border overflow-hidden">
+      <div className="rounded-xl border border-gray-200/60 shadow-sm overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-secondary border-b border-border">
+          <thead className="bg-gray-50 border-b border-gray-200">
             {table.getHeaderGroups().map(hg => (
               <tr key={hg.id}>
                 {hg.headers.map(header => (
                   <th
                     key={header.id}
-                    className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground"
+                    className="px-3 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
                     {header.isPlaceholder
                       ? null
@@ -363,10 +368,10 @@ export function PropertyTable({
               </tr>
             ))}
           </thead>
-          <tbody className="divide-y divide-border bg-white">
+          <tbody className="divide-y divide-gray-200 bg-white">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-3 py-12 text-center text-sm text-muted-foreground">
+                <td colSpan={columns.length} className="px-3 py-12 text-center text-sm text-gray-500">
                   {data.length === 0
                     ? 'No properties yet. Import a CSV to get started.'
                     : 'No properties match your filters.'}
@@ -374,7 +379,7 @@ export function PropertyTable({
               </tr>
             ) : (
               rows.map(row => (
-                <tr key={row.id} className="hover:bg-secondary/40 transition-colors">
+                <tr key={row.id} className="hover:bg-gray-50 transition-colors">
                   {row.getVisibleCells().map(cell => (
                     <td key={cell.id} className="px-3 py-2.5">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

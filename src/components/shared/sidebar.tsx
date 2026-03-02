@@ -49,6 +49,31 @@ const ROLE_LABELS: Record<string, string> = {
   pm_staff: 'PM Staff',
 }
 
+const activeStyle: React.CSSProperties = {
+  backgroundColor: 'rgba(255,255,255,0.1)',
+  color: '#FFFFFF',
+  borderLeft: '3px solid #4F8EF7',
+  paddingLeft: '9px',
+  transition: 'all 0.15s ease',
+}
+
+const idleStyle: React.CSSProperties = {
+  color: '#9CA3AF',
+  borderLeft: '3px solid transparent',
+  paddingLeft: '9px',
+  transition: 'all 0.15s ease',
+}
+
+const hoverIn = (e: React.MouseEvent<HTMLElement>) => {
+  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'
+  e.currentTarget.style.color = '#FFFFFF'
+}
+
+const hoverOut = (e: React.MouseEvent<HTMLElement>) => {
+  e.currentTarget.style.backgroundColor = 'transparent'
+  e.currentTarget.style.color = '#9CA3AF'
+}
+
 interface SidebarProps {
   userName: string
   userRole: string
@@ -100,25 +125,12 @@ export function Sidebar({ userName, userRole, logoUrl }: SidebarProps) {
               key={href}
               href={href}
               className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                'flex items-center gap-3 rounded-md py-2 text-sm',
                 active ? 'font-medium' : ''
               )}
-              style={active
-                ? { backgroundColor: 'rgba(255,255,255,0.1)', color: '#FFFFFF' }
-                : { color: '#9CA3AF' }
-              }
-              onMouseEnter={e => {
-                if (!active) {
-                  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'
-                  e.currentTarget.style.color = '#FFFFFF'
-                }
-              }}
-              onMouseLeave={e => {
-                if (!active) {
-                  e.currentTarget.style.backgroundColor = 'transparent'
-                  e.currentTarget.style.color = '#9CA3AF'
-                }
-              }}
+              style={active ? activeStyle : idleStyle}
+              onMouseEnter={active ? undefined : hoverIn}
+              onMouseLeave={active ? undefined : hoverOut}
             >
               <Icon className="h-4 w-4 shrink-0" />
               {label}
@@ -132,31 +144,18 @@ export function Sidebar({ userName, userRole, logoUrl }: SidebarProps) {
             type="button"
             onClick={() => setSettingsOpen((prev) => !prev)}
             className={cn(
-              'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors cursor-pointer',
+              'flex w-full items-center gap-3 rounded-md py-2 text-sm cursor-pointer',
               isSettingsActive ? 'font-medium' : ''
             )}
-            style={isSettingsActive
-              ? { backgroundColor: 'rgba(255,255,255,0.1)', color: '#FFFFFF' }
-              : { color: '#9CA3AF' }
-            }
-            onMouseEnter={e => {
-              if (!isSettingsActive) {
-                e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'
-                e.currentTarget.style.color = '#FFFFFF'
-              }
-            }}
-            onMouseLeave={e => {
-              if (!isSettingsActive) {
-                e.currentTarget.style.backgroundColor = 'transparent'
-                e.currentTarget.style.color = '#9CA3AF'
-              }
-            }}
+            style={isSettingsActive ? activeStyle : idleStyle}
+            onMouseEnter={isSettingsActive ? undefined : hoverIn}
+            onMouseLeave={isSettingsActive ? undefined : hoverOut}
           >
             <Settings className="h-4 w-4 shrink-0" />
             Settings
             <ChevronRight
               className={cn('h-3 w-3 ml-auto transition-transform', (settingsOpen || isSettingsActive) && 'rotate-90')}
-              style={{ color: '#6B7280' }}
+              style={{ color: (settingsOpen || isSettingsActive) ? '#FFFFFF' : '#6B7280' }}
             />
           </button>
 
@@ -169,25 +168,15 @@ export function Sidebar({ userName, userRole, logoUrl }: SidebarProps) {
                     key={href}
                     href={href}
                     className={cn(
-                      'block rounded-md px-3 py-1.5 text-sm transition-colors',
+                      'block rounded-md px-3 py-1.5 text-sm',
                       active ? 'font-medium' : ''
                     )}
                     style={active
-                      ? { backgroundColor: 'rgba(255,255,255,0.1)', color: '#FFFFFF' }
-                      : { color: '#9CA3AF' }
+                      ? { backgroundColor: 'rgba(255,255,255,0.1)', color: '#FFFFFF', transition: 'all 0.15s ease' }
+                      : { color: '#9CA3AF', transition: 'all 0.15s ease' }
                     }
-                    onMouseEnter={e => {
-                      if (!active) {
-                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'
-                        e.currentTarget.style.color = '#FFFFFF'
-                      }
-                    }}
-                    onMouseLeave={e => {
-                      if (!active) {
-                        e.currentTarget.style.backgroundColor = 'transparent'
-                        e.currentTarget.style.color = '#9CA3AF'
-                      }
-                    }}
+                    onMouseEnter={active ? undefined : hoverIn}
+                    onMouseLeave={active ? undefined : hoverOut}
                   >
                     {label}
                   </Link>
@@ -222,8 +211,8 @@ export function Sidebar({ userName, userRole, logoUrl }: SidebarProps) {
         <button
           type="button"
           onClick={handleSignOut}
-          className="w-full flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors cursor-pointer"
-          style={{ color: '#9CA3AF' }}
+          className="w-full flex items-center gap-2 rounded-md px-3 py-1.5 text-sm cursor-pointer"
+          style={{ color: '#9CA3AF', transition: 'all 0.15s ease' }}
           onMouseEnter={e => {
             e.currentTarget.style.color = '#FFFFFF'
             e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'

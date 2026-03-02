@@ -28,7 +28,7 @@ export default async function UsersPage() {
 
   return (
     <AppShell>
-      <div className="p-6 lg:p-8 max-w-5xl">
+      <div className="px-8 py-6 max-w-5xl">
         <UserManager initial={serialized} />
       </div>
     </AppShell>

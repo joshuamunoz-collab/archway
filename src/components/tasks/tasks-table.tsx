@@ -275,14 +275,14 @@ export function TasksTable({
             </div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-secondary border-b border-border">
+              <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Task</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground hidden md:table-cell">Property</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground hidden sm:table-cell">Type</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Priority</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Status</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground hidden lg:table-cell">Due</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Property</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Type</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Due</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -294,7 +294,7 @@ export function TasksTable({
                   </tr>
                 )}
                 {filtered.map(t => (
-                  <tr key={t.id} className="hover:bg-secondary/30">
+                  <tr key={t.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3">
                       <Link href={`/tasks/${t.id}`} className="hover:underline font-medium text-foreground">
                         {t.title}

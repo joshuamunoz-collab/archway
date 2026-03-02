@@ -138,7 +138,7 @@ export function TaskDetail({ task }: { task: TaskData }) {
   const displayStatus = isOverdue ? 'overdue' : status
 
   return (
-    <div className="p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
+    <div className="px-8 py-6 max-w-4xl mx-auto space-y-6">
       {/* Back nav */}
       <div>
         <Link href="/tasks" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">

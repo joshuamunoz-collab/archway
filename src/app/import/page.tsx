@@ -17,10 +17,10 @@ export default async function ImportPage() {
 
   return (
     <AppShell>
-      <div className="p-6 lg:p-8 max-w-5xl space-y-8">
+      <div className="px-8 py-6 max-w-5xl space-y-8">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Import Data</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Upload CSV files to bulk-import properties, payments, and expenses</p>
+          <h1 className="text-2xl font-bold text-gray-900">Import Data</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Upload CSV files to bulk-import properties, payments, and expenses</p>
         </div>
 
         <section>

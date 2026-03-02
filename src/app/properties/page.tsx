@@ -35,7 +35,7 @@ export default async function PropertiesPage() {
 
   return (
     <AppShell>
-      <div className="p-6 lg:p-8 max-w-7xl">
+      <div className="px-8 py-6 max-w-7xl">
         <PropertyTable data={rows} entityNames={entityNames} />
       </div>
     </AppShell>

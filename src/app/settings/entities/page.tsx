@@ -29,7 +29,7 @@ export default async function EntitiesPage() {
 
   return (
     <AppShell>
-      <div className="p-6 lg:p-8 max-w-5xl">
+      <div className="px-8 py-6 max-w-5xl">
         <EntityManager initial={serialized} />
       </div>
     </AppShell>

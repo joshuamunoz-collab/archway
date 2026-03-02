@@ -221,7 +221,7 @@ export function FinancialsTab({ data }: { data: PropertyDetailData }) {
             </div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-secondary border-b border-border">
+              <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Date</th>
                   <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Type</th>
@@ -232,7 +232,7 @@ export function FinancialsTab({ data }: { data: PropertyDetailData }) {
               </thead>
               <tbody className="divide-y divide-border">
                 {recentPayments.map(p => (
-                  <tr key={p.id} className="hover:bg-secondary/30 group">
+                  <tr key={p.id} className="hover:bg-gray-50 transition-colors group">
                     <td className="px-4 py-2.5 text-muted-foreground">{formatDate(p.date)}</td>
                     <td className="px-4 py-2.5">{PAYMENT_TYPE_LABEL[p.type] ?? p.type}</td>
                     <td className="px-4 py-2.5">
@@ -283,7 +283,7 @@ export function FinancialsTab({ data }: { data: PropertyDetailData }) {
             </div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-secondary border-b border-border">
+              <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Date</th>
                   <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Category</th>
@@ -295,7 +295,7 @@ export function FinancialsTab({ data }: { data: PropertyDetailData }) {
               </thead>
               <tbody className="divide-y divide-border">
                 {recentExpenses.map(e => (
-                  <tr key={e.id} className="hover:bg-secondary/30 group">
+                  <tr key={e.id} className="hover:bg-gray-50 transition-colors group">
                     <td className="px-4 py-2.5 text-muted-foreground">{formatDate(e.date)}</td>
                     <td className="px-4 py-2.5">
                       <span className="font-medium">{e.category.replace(/_/g, ' ')}</span>
