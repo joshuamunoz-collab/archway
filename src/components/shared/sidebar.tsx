@@ -44,13 +44,20 @@ const settingsItems = [
   { label: 'Activity',    href: '/settings/activity' },
 ]
 
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Admin',
+  staff: 'Staff',
+  pm: 'PM',
+  pm_staff: 'PM Staff',
+}
+
 interface SidebarProps {
-  userEmail: string
   userName: string
+  userRole: string
   logoUrl?: string
 }
 
-export function Sidebar({ userEmail, userName, logoUrl }: SidebarProps) {
+export function Sidebar({ userName, userRole, logoUrl }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const isSettingsActive = pathname.startsWith('/settings')
@@ -149,7 +156,7 @@ export function Sidebar({ userEmail, userName, logoUrl }: SidebarProps) {
           </div>
           <div className="min-w-0">
             <p className="text-xs font-medium text-foreground truncate">{userName}</p>
-            <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+            <p className="text-xs text-muted-foreground truncate">{ROLE_LABELS[userRole] ?? userRole}</p>
           </div>
         </div>
         <Button

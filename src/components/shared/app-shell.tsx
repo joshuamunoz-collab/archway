@@ -15,7 +15,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   try {
     profile = await prisma.userProfile.findUnique({
       where: { id: user.id },
-      select: { fullName: true, email: true },
+      select: { fullName: true, email: true, role: true },
     })
   } catch {
     // DB unavailable — still render the shell with fallback user info
@@ -33,11 +33,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const userName = profile?.fullName ?? user.email ?? 'User'
-  const userEmail = profile?.email ?? user.email ?? ''
+  const userRole = profile?.role ?? ''
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar userEmail={userEmail} userName={userName} logoUrl={logoUrl} />
+      <Sidebar userName={userName} userRole={userRole} logoUrl={logoUrl} />
       <div className="ml-60 min-h-screen flex flex-col">
         {/* Top header with search */}
         <header className="sticky top-0 z-30 h-14 shrink-0 border-b bg-white/80 backdrop-blur-sm flex items-center px-6 gap-4">
