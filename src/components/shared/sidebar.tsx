@@ -80,7 +80,7 @@ export function Sidebar({ userName, userRole, logoUrl }: SidebarProps) {
             src={logoUrl}
             alt="Company logo"
             className="h-8 object-contain"
-            style={{ filter: 'brightness(0) invert(1)' }}
+            style={{ backgroundColor: '#FFFFFF', borderRadius: '6px', padding: '2px' }}
           />
         )}
         <span className="text-base font-semibold tracking-tight" style={{ color: '#FFFFFF' }}>
