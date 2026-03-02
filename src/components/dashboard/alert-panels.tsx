@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { AlertCircle, AlertTriangle, Clock, FileWarning, ClipboardList } from 'lucide-react'
+import { AlertCircle, AlertTriangle, CheckCircle2, Clock, FileWarning, ClipboardList } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getVacancyDays, getVacancyUrgency } from '@/lib/vacancy'
@@ -64,6 +64,7 @@ export function AlertPanels({
     return (
       <Card>
         <CardContent className="py-6 text-center">
+          <CheckCircle2 className="h-5 w-5 text-emerald-500 mx-auto mb-1" />
           <p className="text-sm text-emerald-600 font-medium">All clear — no alerts</p>
           <p className="text-xs text-muted-foreground mt-1">No vacancy risks, overdue notices, or expiring leases</p>
         </CardContent>

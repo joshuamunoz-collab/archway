@@ -50,7 +50,7 @@
   --radius: 0.5rem;
 
   /* ── Core palette (CLAUDE.md) ── */
-  --background:          #FAFAFA;
+  --background:          #F8F9FB;
   --foreground:          #1A1A1A;
   --card:                #FFFFFF;
   --card-foreground:     #1A1A1A;
@@ -86,14 +86,14 @@
   --chart-4:             #8B5CF6;
   --chart-5:             #6B7280;
 
-  /* ── Sidebar ── */
-  --sidebar:             #FFFFFF;
-  --sidebar-foreground:  #1A1A1A;
+  /* ── Sidebar (dark navy) ── */
+  --sidebar:             #1A1A2E;
+  --sidebar-foreground:  #FFFFFF;
   --sidebar-primary:     #2563EB;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent:      #F3F4F6;
-  --sidebar-accent-foreground:  #1A1A1A;
-  --sidebar-border:      #E5E7EB;
+  --sidebar-accent:      rgba(255, 255, 255, 0.1);
+  --sidebar-accent-foreground:  #FFFFFF;
+  --sidebar-border:      rgba(255, 255, 255, 0.1);
   --sidebar-ring:        #2563EB;
 
   /* ── Semantic status colors ── */

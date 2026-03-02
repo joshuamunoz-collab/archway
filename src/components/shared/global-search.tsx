@@ -152,7 +152,7 @@ export function GlobalSearch() {
           onFocus={() => { if (results && totalResults > 0) setOpen(true) }}
           onKeyDown={handleKeyDown}
           placeholder="Search properties, tenants, tasks... (Ctrl+K)"
-          className="w-full h-9 pl-9 pr-3 rounded-md border border-input bg-white text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+          className="w-full h-9 pl-9 pr-3 rounded-xl border-0 bg-gray-100 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
         />
         {loading && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">

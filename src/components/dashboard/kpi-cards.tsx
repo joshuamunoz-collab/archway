@@ -42,7 +42,7 @@ export function KpiCards({
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {/* Portfolio Status */}
-      <Card className="col-span-2 lg:col-span-1">
+      <Card className="col-span-2 lg:col-span-1 shadow-sm hover:shadow-md transition-shadow">
         <CardContent className="pt-5 pb-4">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Portfolio</p>
           <p className="text-3xl font-bold text-foreground tabular-nums">{statusCounts.total}</p>
@@ -73,20 +73,20 @@ export function KpiCards({
       </Card>
 
       {/* MTD Income */}
-      <Card>
+      <Card className="shadow-sm hover:shadow-md transition-shadow">
         <CardContent className="pt-5 pb-4">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">MTD Income</p>
           <p className="text-2xl font-bold text-foreground tabular-nums">{formatCurrency(mtdIncome)}</p>
           <p className="text-xs text-muted-foreground mb-3">
             of {formatCurrency(expectedMonthlyIncome)} expected
           </p>
-          <Progress value={incomeProgress} className="h-1.5 mb-1" />
+          <Progress value={incomeProgress} className="h-1.5 mb-1 bg-gray-100 [&>[data-slot=progress-indicator]]:bg-blue-500" />
           <p className="text-xs text-muted-foreground">{incomeProgress}% collected</p>
         </CardContent>
       </Card>
 
       {/* MTD Expenses */}
-      <Card>
+      <Card className="shadow-sm hover:shadow-md transition-shadow">
         <CardContent className="pt-5 pb-4">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">MTD Expenses</p>
           <p className="text-2xl font-bold text-foreground tabular-nums">{formatCurrency(mtdExpenses)}</p>
@@ -105,7 +105,7 @@ export function KpiCards({
       </Card>
 
       {/* Vacancy Insurance Risk */}
-      <Card className={cn(highRiskVacantCount > 0 ? 'border-red-200 bg-red-50' : '')}>
+      <Card className={cn('shadow-sm hover:shadow-md transition-shadow', highRiskVacantCount > 0 ? 'border-red-200 bg-red-50' : '')}>
         <CardContent className="pt-5 pb-4">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
             Vacancy Risk

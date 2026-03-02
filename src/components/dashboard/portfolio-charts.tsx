@@ -47,7 +47,7 @@ export function PortfolioCharts({
       {/* Trailing 12 months */}
       <Card className="lg:col-span-2">
         <CardHeader className="pb-2 pt-4 px-4">
-          <CardTitle className="text-sm font-semibold text-foreground">Income vs. Expenses — Trailing 12 Months</CardTitle>
+          <CardTitle className="text-base font-semibold text-foreground">Income vs. Expenses — Trailing 12 Months</CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           {!hasMonthlyData ? (
@@ -73,7 +73,7 @@ export function PortfolioCharts({
       {/* Income by Entity */}
       <Card>
         <CardHeader className="pb-2 pt-4 px-4">
-          <CardTitle className="text-sm font-semibold text-foreground">MTD Income by Entity</CardTitle>
+          <CardTitle className="text-base font-semibold text-foreground">MTD Income by Entity</CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           {!hasEntityData ? (
