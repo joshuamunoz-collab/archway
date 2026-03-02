@@ -115,12 +115,27 @@ export default async function PropertyDetailPage({
     .sort((a, b) => b.amount - a.amount)
 
   // Load activity log separately (entityType='property', entityId=id)
-  const activityLog = await prisma.activityLog.findMany({
-    where: { entityType: 'property', entityId: id },
-    include: { user: { select: { fullName: true } } },
-    orderBy: { createdAt: 'desc' },
-    take: 30,
-  })
+  const [activityLog, linkedNoteJoins] = await Promise.all([
+    prisma.activityLog.findMany({
+      where: { entityType: 'property', entityId: id },
+      include: { user: { select: { fullName: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 30,
+    }),
+    prisma.quickNoteProperty.findMany({
+      where: { propertyId: id },
+      include: {
+        note: {
+          include: {
+            author: { select: { fullName: true } },
+            properties: {
+              include: { property: { select: { id: true, addressLine1: true } } },
+            },
+          },
+        },
+      },
+    }),
+  ])
 
   // Serialize all Prisma Decimal and Date values for client
   const activeLease = property.leases[0] ?? null
@@ -279,6 +294,29 @@ export default async function PropertyDetailPage({
     mtdExpenses: Number(mtdExpensesAgg._sum.amount ?? 0),
     monthlyChartData,
     expenseByCategoryData,
+    quickNotes: (() => {
+      // Deduplicate by note id (a note may link to this property multiple times theoretically)
+      const seen = new Set<string>()
+      return linkedNoteJoins
+        .filter(j => {
+          if (seen.has(j.note.id)) return false
+          seen.add(j.note.id)
+          return true
+        })
+        .map(j => ({
+          id: j.note.id,
+          content: j.note.content,
+          category: j.note.category,
+          authorName: j.note.author.fullName,
+          createdAt: j.note.createdAt.toISOString(),
+          mentionedProperties: j.note.properties.map(p => ({
+            id: p.property.id,
+            addressLine1: p.property.addressLine1,
+            mentionText: p.mentionText,
+          })),
+        }))
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    })(),
   }
 
   return (

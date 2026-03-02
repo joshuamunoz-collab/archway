@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Sidebar } from './sidebar'
 import { GlobalSearch } from './global-search'
+import { CreateNoteDialog } from './create-note-dialog'
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -43,6 +44,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         {/* Top header with search */}
         <header className="sticky top-0 z-30 h-14 shrink-0 border-b bg-white/80 backdrop-blur-sm flex items-center px-6 gap-4">
           <GlobalSearch />
+          <CreateNoteDialog />
         </header>
         <main className="flex-1">
           {children}

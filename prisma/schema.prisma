@@ -25,6 +25,7 @@ model UserProfile {
   billMessages   PmBillMessage[]
   taskMessages   PmTaskMessage[]
   activityLogs   ActivityLog[]
+  quickNotes     QuickNote[]
 
   @@map("user_profiles")
 }
@@ -93,12 +94,22 @@ model Property {
   isSection8   Boolean   @default(false) @map("is_section_8")
   status       String    @default("vacant") // occupied | vacant | rehab | pending_inspection | pending_packet
   vacantSince  DateTime? @map("vacant_since") @db.Date
-  notes        String?
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  notes            String?
+  addressFormatted String?   @map("address_formatted")
+  streetNumber     String?   @map("street_number")
+  streetName       String?   @map("street_name")
+  unitDesignator   String?   @map("unit_designator")
+  latitude         Decimal?  @db.Decimal(10, 7)
+  longitude        Decimal?  @db.Decimal(10, 7)
+  googlePlaceId    String?   @map("google_place_id")
+  parentPropertyId String?   @map("parent_property_id") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   // Relations
   entity            Entity            @relation(fields: [entityId], references: [id])
+  parentProperty    Property?         @relation("PropertyHierarchy", fields: [parentPropertyId], references: [id])
+  childProperties   Property[]        @relation("PropertyHierarchy")
   leases            Lease[]
   payments          Payment[]
   expenses          Expense[]
@@ -111,9 +122,11 @@ model Property {
   inspections       Inspection[]
   documents         Document[]
   photos            Photo[]
+  quickNoteMentions QuickNoteProperty[]
 
   @@index([entityId], map: "idx_properties_entity")
   @@index([status], map: "idx_properties_status")
+  @@index([parentPropertyId], map: "idx_properties_parent")
   @@map("properties")
 }
 
@@ -386,6 +399,7 @@ model PmTask {
   property   Property?       @relation(fields: [propertyId], references: [id])
   cityNotice CityNotice?     @relation(fields: [cityNoticeId], references: [id])
   messages   PmTaskMessage[]
+  quickNotes QuickNote[]
 
   @@index([propertyId], map: "idx_pm_tasks_property")
   @@index([status], map: "idx_pm_tasks_status")
@@ -542,4 +556,44 @@ model ActivityLog {
   @@index([entityType, entityId], map: "idx_activity_entity")
   @@index([createdAt], map: "idx_activity_date")
   @@map("activity_log")
+}
+
+// ── Quick Notes ───────────────────────────────────────────────────────────────
+
+model QuickNote {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  content     String
+  contentHtml String?  @map("content_html")
+  category    String   @default("general")
+  authorId    String   @map("author_id") @db.Uuid
+  taskId      String?  @map("task_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  author     UserProfile         @relation(fields: [authorId], references: [id])
+  task       PmTask?             @relation(fields: [taskId], references: [id])
+  properties QuickNoteProperty[]
+
+  @@index([authorId], map: "idx_quick_notes_author")
+  @@index([taskId], map: "idx_quick_notes_task")
+  @@index([category], map: "idx_quick_notes_category")
+  @@map("quick_notes")
+}
+
+// ── Quick Note Properties (join table) ───────────────────────────────────────
+
+model QuickNoteProperty {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  noteId      String @map("note_id") @db.Uuid
+  propertyId  String @map("property_id") @db.Uuid
+  mentionText String @map("mention_text")
+
+  // Relations
+  note     QuickNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  property Property  @relation(fields: [propertyId], references: [id])
+
+  @@index([noteId], map: "idx_quick_note_properties_note")
+  @@index([propertyId], map: "idx_quick_note_properties_property")
+  @@map("quick_note_properties")
 }

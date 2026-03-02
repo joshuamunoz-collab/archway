@@ -18,6 +18,7 @@ import { CityTab } from './tabs/city-tab'
 import { InspectionsTab } from './tabs/inspections-tab'
 import { DocumentsTab } from './tabs/documents-tab'
 import { PhotosTab } from './tabs/photos-tab'
+import { NotesTab } from './tabs/notes-tab'
 import { ActivityTab } from './tabs/activity-tab'
 import type { PropertyDetailData } from '@/types/property'
 import { cn } from '@/lib/utils'
@@ -40,6 +41,7 @@ const TABS = [
   { value: 'inspections',  label: 'Inspections' },
   { value: 'documents',    label: 'Documents' },
   { value: 'photos',     label: 'Photos' },
+  { value: 'notes',      label: 'Notes' },
   { value: 'activity',   label: 'Activity' },
 ]
 
@@ -179,6 +181,7 @@ export function PropertyDetail({ data }: { data: PropertyDetailData }) {
         {activeTab === 'inspections' && <InspectionsTab data={data} />}
         {activeTab === 'documents'   && <DocumentsTab data={data} />}
         {activeTab === 'photos'     && <PhotosTab data={data} />}
+        {activeTab === 'notes'      && <NotesTab data={data} />}
         {activeTab === 'activity'   && <ActivityTab data={data} />}
       </div>
     </div>

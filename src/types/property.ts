@@ -172,6 +172,15 @@ export interface RehabProjectData {
   milestones: RehabMilestoneData[]
 }
 
+export interface QuickNoteData {
+  id: string
+  content: string
+  category: string
+  authorName: string
+  createdAt: string
+  mentionedProperties: { id: string; addressLine1: string; mentionText: string }[]
+}
+
 export interface PropertyDetailData {
   id: string
   entityId: string
@@ -211,4 +220,5 @@ export interface PropertyDetailData {
   mtdExpenses: number
   monthlyChartData: MonthlyChartPoint[]
   expenseByCategoryData: CategoryChartPoint[]
+  quickNotes: QuickNoteData[]
 }
