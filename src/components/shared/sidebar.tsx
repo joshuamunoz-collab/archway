@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -52,6 +53,7 @@ export function Sidebar({ userEmail, userName }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const isSettingsActive = pathname.startsWith('/settings')
+  const [settingsOpen, setSettingsOpen] = useState(isSettingsActive)
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -92,20 +94,22 @@ export function Sidebar({ userEmail, userName }: SidebarProps) {
 
         {/* Settings group */}
         <div className="pt-1">
-          <div
+          <button
+            type="button"
+            onClick={() => setSettingsOpen((prev) => !prev)}
             className={cn(
-              'flex items-center gap-3 rounded-md px-3 py-2 text-sm',
+              'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors cursor-pointer',
               isSettingsActive
                 ? 'text-foreground font-medium'
-                : 'text-muted-foreground'
+                : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
             )}
           >
             <Settings className="h-4 w-4 shrink-0" />
             Settings
-            <ChevronRight className={cn('h-3 w-3 ml-auto transition-transform', isSettingsActive && 'rotate-90')} />
-          </div>
+            <ChevronRight className={cn('h-3 w-3 ml-auto transition-transform', (settingsOpen || isSettingsActive) && 'rotate-90')} />
+          </button>
 
-          {isSettingsActive && (
+          {(settingsOpen || isSettingsActive) && (
             <div className="ml-7 mt-0.5 space-y-0.5">
               {settingsItems.map(({ label, href }) => {
                 const active = pathname === href

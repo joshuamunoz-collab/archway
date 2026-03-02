@@ -13,7 +13,14 @@
       "Bash(npm run:*)",
       "Bash(rm:*)",
       "Bash(node:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "WebFetch(domain:archway-gamma.vercel.app)",
+      "WebFetch(domain:vercel.com)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:joshuamunoz-collab-archway-ick5zkkem-joshua-munozs-projects.vercel.app)",
+      "Bash(python3:*)",
+      "WebFetch(domain:api.vercel.com)",
+      "Bash(curl:*)"
     ]
   }
 }
