@@ -20,7 +20,8 @@
       "WebFetch(domain:joshuamunoz-collab-archway-ick5zkkem-joshua-munozs-projects.vercel.app)",
       "Bash(python3:*)",
       "WebFetch(domain:api.vercel.com)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npx next:*)"
     ]
   }
 }
