@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAuth, requireAdmin, sanitizeString, parseAmount } from '@/lib/auth'
 
 export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
 
   const entities = await prisma.entity.findMany({
     include: { bankAccounts: { orderBy: { accountType: 'asc' } } },
@@ -16,26 +15,26 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
 
   const body = await request.json()
-  const { name, ein, address, phone, email, pmFeePct, notes } = body
-
-  if (!name?.trim()) {
+  const name = sanitizeString(body.name, 200)
+  if (!name) {
     return NextResponse.json({ error: 'Name is required' }, { status: 400 })
   }
 
+  const pmFee = parseAmount(body.pmFeePct)
+
   const entity = await prisma.entity.create({
     data: {
-      name: name.trim(),
-      ein: ein?.trim() || null,
-      address: address?.trim() || null,
-      phone: phone?.trim() || null,
-      email: email?.trim() || null,
-      pmFeePct: pmFeePct ?? 10,
-      notes: notes?.trim() || null,
+      name,
+      ein: sanitizeString(body.ein, 20),
+      address: sanitizeString(body.address, 500),
+      phone: sanitizeString(body.phone, 30),
+      email: sanitizeString(body.email, 200),
+      pmFeePct: pmFee != null && pmFee <= 100 ? pmFee : 10,
+      notes: sanitizeString(body.notes, 2000),
     },
     include: { bankAccounts: true },
   })
@@ -46,7 +45,7 @@ export async function POST(request: Request) {
       entityId: entity.id,
       action: 'created',
       details: { name: entity.name },
-      userId: user.id,
+      userId: auth.user.id,
     },
   })
 

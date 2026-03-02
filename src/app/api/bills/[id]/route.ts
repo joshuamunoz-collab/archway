@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAuth, requireAdmin } from '@/lib/auth'
+
+const VALID_BILL_STATUSES = ['received', 'under_review', 'approved', 'paid', 'disputed']
+const ADMIN_ONLY_STATUSES = ['approved', 'paid']
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
 
   const { id } = await params
 
@@ -53,13 +55,22 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
 
   const { id } = await params
   const body = await request.json()
   const { status, paidDate, paymentMethod, paymentReference, bankAccountId, notes } = body
+
+  // Validate status enum
+  if (status && !VALID_BILL_STATUSES.includes(status)) {
+    return NextResponse.json({ error: 'Invalid bill status' }, { status: 400 })
+  }
+
+  // Only admins can approve or pay bills
+  if (status && ADMIN_ONLY_STATUSES.includes(status) && auth.profile.role !== 'admin') {
+    return NextResponse.json({ error: 'Only admins can approve or pay bills' }, { status: 403 })
+  }
 
   const bill = await prisma.pmBill.findUnique({
     where: { id },
@@ -72,7 +83,7 @@ export async function PATCH(
   if (notes !== undefined) updateData.notes = notes || null
 
   if (status === 'approved') {
-    updateData.approvedBy = user.id
+    updateData.approvedBy = auth.user.id
     updateData.approvedAt = new Date()
   }
 
@@ -110,7 +121,7 @@ export async function PATCH(
       entityId: bill.propertyId,
       action: `bill_${status ?? 'updated'}`,
       details: { billId: id, totalAmount: Number(bill.totalAmount) },
-      userId: user.id,
+      userId: auth.user.id,
     },
   })
 
@@ -121,9 +132,8 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
 
   const { id } = await params
 

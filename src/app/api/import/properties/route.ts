@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/auth'
 
 const VALID_STATUSES = ['occupied', 'vacant', 'rehab', 'pending_inspection', 'pending_packet']
 const VALID_TYPES = ['single_family', 'duplex', 'multi_family', '']
@@ -26,9 +26,8 @@ interface ImportRow {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
 
   const { rows }: { rows: ImportRow[] } = await request.json()
   if (!Array.isArray(rows) || rows.length === 0) {
@@ -108,7 +107,7 @@ export async function POST(request: Request) {
           entityId: property.id,
           action: 'imported',
           details: { address },
-          userId: user.id,
+          userId: auth.user.id,
         },
       })
 

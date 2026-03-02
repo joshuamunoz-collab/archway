@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth'
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string; milestoneId: string }> }
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
 
   const { id, milestoneId } = await params
   const body = await request.json()
@@ -32,7 +31,7 @@ export async function PATCH(
         entityId: id,
         action: 'milestone_updated',
         details: { milestoneId, changes: Object.keys(updateData) },
-        userId: user.id,
+        userId: auth.user.id,
       },
     })
 
@@ -46,9 +45,8 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string; milestoneId: string }> }
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
 
   const { id, milestoneId } = await params
 
@@ -61,7 +59,7 @@ export async function DELETE(
         entityId: id,
         action: 'milestone_deleted',
         details: { milestoneId },
-        userId: user.id,
+        userId: auth.user.id,
       },
     })
 

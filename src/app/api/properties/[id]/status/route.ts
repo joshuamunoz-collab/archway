@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth'
 
 const VALID_STATUSES = ['occupied', 'vacant', 'rehab', 'pending_inspection', 'pending_packet']
 
@@ -8,9 +8,8 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
 
   const { id } = await params
   const { status } = await request.json()
@@ -48,7 +47,7 @@ export async function PATCH(
       entityId: id,
       action: 'status_changed',
       details: { from: existing.status, to: status },
-      userId: user.id,
+      userId: auth.user.id,
     },
   })
 

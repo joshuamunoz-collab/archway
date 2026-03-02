@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth'
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
 
   const { id } = await params
   const policies = await prisma.insurancePolicy.findMany({
@@ -22,9 +21,8 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
 
   const { id } = await params
   const body = await request.json()
@@ -50,7 +48,7 @@ export async function POST(
       entityId: id,
       action: 'insurance_added',
       details: { carrier: body.carrier, policyType: body.policyType },
-      userId: user.id,
+      userId: auth.user.id,
     },
   })
 

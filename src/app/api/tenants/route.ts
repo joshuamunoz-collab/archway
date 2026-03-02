@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth'
 
 export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
 
   const tenants = await prisma.tenant.findMany({
     orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
@@ -27,9 +26,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
 
   const body = await request.json()
   const { firstName, lastName, phone, email, voucherNumber, phaCaseworker, phaPhone, notes } = body
@@ -57,7 +55,7 @@ export async function POST(request: Request) {
       entityId: tenant.id,
       action: 'tenant_created',
       details: { name: `${firstName} ${lastName}` },
-      userId: user.id,
+      userId: auth.user.id,
     },
   })
 

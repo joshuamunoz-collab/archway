@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth'
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string; docId: string }> }
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
 
   const { id, docId } = await params
 
@@ -21,7 +20,7 @@ export async function DELETE(
         entityId: id,
         action: 'document_deleted',
         details: { docId },
-        userId: user.id,
+        userId: auth.user.id,
       },
     })
 

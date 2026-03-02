@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/auth'
 
 // POST /api/bills/bulk
 // Body: { action: 'approve' | 'pay', billIds: string[], paidDate?, paymentMethod?, bankAccountId? }
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // Only admins can bulk approve/pay bills
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
 
   const { action, billIds, paidDate, paymentMethod, paymentReference, bankAccountId } = await request.json()
 
@@ -15,12 +15,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'action and billIds are required' }, { status: 400 })
   }
 
+  if (billIds.length > 100) {
+    return NextResponse.json({ error: 'Cannot process more than 100 bills at once' }, { status: 400 })
+  }
+
   let updated = 0
 
   if (action === 'approve') {
     await prisma.pmBill.updateMany({
       where: { id: { in: billIds }, status: { in: ['received', 'under_review'] } },
-      data: { status: 'approved', approvedBy: user.id, approvedAt: new Date() },
+      data: { status: 'approved', approvedBy: auth.user.id, approvedAt: new Date() },
     })
     updated = billIds.length
 
@@ -33,7 +37,7 @@ export async function POST(request: Request) {
             entityId: bill.propertyId,
             action: 'bill_approved',
             details: { billId, totalAmount: Number(bill.totalAmount) },
-            userId: user.id,
+            userId: auth.user.id,
           },
         })
       }
@@ -83,7 +87,7 @@ export async function POST(request: Request) {
           entityId: bill.propertyId,
           action: 'bill_paid',
           details: { billId, totalAmount: Number(bill.totalAmount) },
-          userId: user.id,
+          userId: auth.user.id,
         },
       })
       updated++

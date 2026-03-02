@@ -1,57 +1,61 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAdmin, sanitizeString, parseAmount } from '@/lib/auth'
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
 
   const { id } = await params
   const body = await request.json()
-  const { name, ein, address, phone, email, pmFeePct, notes } = body
+  const name = sanitizeString(body.name, 200)
 
-  if (!name?.trim()) {
+  if (!name) {
     return NextResponse.json({ error: 'Name is required' }, { status: 400 })
   }
 
-  const entity = await prisma.entity.update({
-    where: { id },
-    data: {
-      name: name.trim(),
-      ein: ein?.trim() || null,
-      address: address?.trim() || null,
-      phone: phone?.trim() || null,
-      email: email?.trim() || null,
-      pmFeePct: pmFeePct ?? 10,
-      notes: notes?.trim() || null,
-    },
-    include: { bankAccounts: { orderBy: { accountType: 'asc' } } },
-  })
+  const pmFee = parseAmount(body.pmFeePct)
 
-  await prisma.activityLog.create({
-    data: {
-      entityType: 'entity',
-      entityId: entity.id,
-      action: 'updated',
-      details: { name: entity.name },
-      userId: user.id,
-    },
-  })
+  try {
+    const entity = await prisma.entity.update({
+      where: { id },
+      data: {
+        name,
+        ein: sanitizeString(body.ein, 20),
+        address: sanitizeString(body.address, 500),
+        phone: sanitizeString(body.phone, 30),
+        email: sanitizeString(body.email, 200),
+        pmFeePct: pmFee != null && pmFee <= 100 ? pmFee : 10,
+        notes: sanitizeString(body.notes, 2000),
+      },
+      include: { bankAccounts: { orderBy: { accountType: 'asc' } } },
+    })
 
-  return NextResponse.json(entity)
+    await prisma.activityLog.create({
+      data: {
+        entityType: 'entity',
+        entityId: entity.id,
+        action: 'updated',
+        details: { name: entity.name },
+        userId: auth.user.id,
+      },
+    })
+
+    return NextResponse.json(entity)
+  } catch {
+    return NextResponse.json({ error: 'Entity not found' }, { status: 404 })
+  }
 }
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
 
   const { id } = await params
 
@@ -64,7 +68,21 @@ export async function DELETE(
     )
   }
 
-  await prisma.entity.delete({ where: { id } })
+  try {
+    await prisma.entity.delete({ where: { id } })
 
-  return NextResponse.json({ success: true })
+    await prisma.activityLog.create({
+      data: {
+        entityType: 'entity',
+        entityId: id,
+        action: 'deleted',
+        details: {},
+        userId: auth.user.id,
+      },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch {
+    return NextResponse.json({ error: 'Entity not found' }, { status: 404 })
+  }
 }

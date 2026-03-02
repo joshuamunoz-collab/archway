@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth'
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
 
   const { id: billId } = await params
   const { message } = await request.json()
@@ -18,7 +17,7 @@ export async function POST(
   }
 
   const msg = await prisma.pmBillMessage.create({
-    data: { billId, userId: user.id, message: message.trim() },
+    data: { billId, userId: auth.user.id, message: message.trim() },
     include: { user: { select: { fullName: true } } },
   })
 

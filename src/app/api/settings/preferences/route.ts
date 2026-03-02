@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAuth, requireAdmin } from '@/lib/auth'
 
 export interface SystemPreferences {
   defaultPmFeePct: number
@@ -28,9 +28,8 @@ export const DEFAULT_PREFERENCES: SystemPreferences = {
 }
 
 export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
 
   const pref = await prisma.systemPreference.findUnique({
     where: { key: 'app_preferences' },
@@ -44,14 +43,8 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const caller = await prisma.userProfile.findUnique({ where: { id: user.id } })
-  if (!caller || caller.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
 
   const body = await request.json()
   const preferences: SystemPreferences = {
@@ -80,7 +73,7 @@ export async function PUT(request: Request) {
       entityId: 'app_preferences',
       action: 'updated',
       details: preferences as unknown as Prisma.InputJsonValue,
-      userId: user.id,
+      userId: auth.user.id,
     },
   })
 

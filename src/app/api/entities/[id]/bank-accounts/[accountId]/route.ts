@@ -1,56 +1,61 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAdmin, sanitizeString } from '@/lib/auth'
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string; accountId: string }> }
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
 
   const { id: entityId, accountId } = await params
   const body = await request.json()
-  const { accountName, accountType, institution, lastFour, isDefault, notes } = body
+  const accountName = sanitizeString(body.accountName, 200)
 
-  if (!accountName?.trim()) {
+  if (!accountName) {
     return NextResponse.json({ error: 'Account name is required' }, { status: 400 })
   }
 
-  if (isDefault) {
+  if (body.isDefault) {
     await prisma.bankAccount.updateMany({
       where: { entityId },
       data: { isDefault: false },
     })
   }
 
-  const account = await prisma.bankAccount.update({
-    where: { id: accountId },
-    data: {
-      accountName: accountName.trim(),
-      accountType,
-      institution: institution?.trim() || null,
-      lastFour: lastFour?.trim() || null,
-      isDefault: isDefault ?? false,
-      notes: notes?.trim() || null,
-    },
-  })
+  try {
+    const account = await prisma.bankAccount.update({
+      where: { id: accountId, entityId },
+      data: {
+        accountName,
+        accountType: body.accountType,
+        institution: sanitizeString(body.institution, 200),
+        lastFour: sanitizeString(body.lastFour, 4),
+        isDefault: body.isDefault ?? false,
+        notes: sanitizeString(body.notes, 1000),
+      },
+    })
 
-  return NextResponse.json(account)
+    return NextResponse.json(account)
+  } catch {
+    return NextResponse.json({ error: 'Bank account not found' }, { status: 404 })
+  }
 }
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: Promise<{ accountId: string }> }
+  { params }: { params: Promise<{ id: string; accountId: string }> }
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
 
-  const { accountId } = await params
+  const { id: entityId, accountId } = await params
 
-  await prisma.bankAccount.delete({ where: { id: accountId } })
-
-  return NextResponse.json({ success: true })
+  try {
+    await prisma.bankAccount.delete({ where: { id: accountId, entityId } })
+    return NextResponse.json({ success: true })
+  } catch {
+    return NextResponse.json({ error: 'Bank account not found' }, { status: 404 })
+  }
 }

@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/auth'
 
 // POST /api/import/payments
 // Body: { rows: Array<{ date, addressLine1, amount, type, status?, referenceNumber?, notes? }> }
 // Each row is matched to a property by addressLine1 (case-insensitive, partial match)
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
 
   const { rows } = await request.json()
   if (!Array.isArray(rows) || rows.length === 0) {
@@ -82,7 +81,7 @@ export async function POST(request: Request) {
         entityId: '00000000-0000-0000-0000-000000000000',
         action: 'payments_imported',
         details: { imported, total: rows.length },
-        userId: user.id,
+        userId: auth.user.id,
       },
     })
   }

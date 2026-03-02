@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/auth'
 
 export async function GET(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
 
   const { searchParams } = new URL(req.url)
-  const page = parseInt(searchParams.get('page') ?? '1')
-  const limit = parseInt(searchParams.get('limit') ?? '50')
+  const page = Math.max(1, parseInt(searchParams.get('page') ?? '1') || 1)
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') ?? '50') || 50))
   const entityType = searchParams.get('entityType') ?? undefined
   const skip = (page - 1) * limit
 

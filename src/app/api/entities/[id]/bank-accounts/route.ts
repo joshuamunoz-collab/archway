@@ -1,28 +1,27 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAdmin, sanitizeString } from '@/lib/auth'
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAdmin()
+  if (auth instanceof NextResponse) return auth
 
   const { id: entityId } = await params
   const body = await request.json()
-  const { accountName, accountType, institution, lastFour, isDefault, notes } = body
+  const accountName = sanitizeString(body.accountName, 200)
 
-  if (!accountName?.trim()) {
+  if (!accountName) {
     return NextResponse.json({ error: 'Account name is required' }, { status: 400 })
   }
-  if (!['checking', 'money_market'].includes(accountType)) {
+  if (!['checking', 'money_market'].includes(body.accountType)) {
     return NextResponse.json({ error: 'Invalid account type' }, { status: 400 })
   }
 
   // If setting as default, unset others for this entity
-  if (isDefault) {
+  if (body.isDefault) {
     await prisma.bankAccount.updateMany({
       where: { entityId },
       data: { isDefault: false },
@@ -32,12 +31,12 @@ export async function POST(
   const account = await prisma.bankAccount.create({
     data: {
       entityId,
-      accountName: accountName.trim(),
-      accountType,
-      institution: institution?.trim() || null,
-      lastFour: lastFour?.trim() || null,
-      isDefault: isDefault ?? false,
-      notes: notes?.trim() || null,
+      accountName,
+      accountType: body.accountType,
+      institution: sanitizeString(body.institution, 200),
+      lastFour: sanitizeString(body.lastFour, 4),
+      isDefault: body.isDefault ?? false,
+      notes: sanitizeString(body.notes, 1000),
     },
   })
 

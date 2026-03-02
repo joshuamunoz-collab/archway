@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth'
 
 export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
 
   const rehabs = await prisma.rehabProject.findMany({
     include: {
@@ -19,9 +18,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
 
   const body = await request.json()
 
@@ -55,7 +53,7 @@ export async function POST(request: Request) {
       entityId: rehab.id,
       action: 'rehab_created',
       details: { propertyId: body.propertyId, scope: body.scope },
-      userId: user.id,
+      userId: auth.user.id,
     },
   })
 

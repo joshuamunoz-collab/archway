@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth'
 
 /**
  * GET /api/reports?type=rent_roll&entityId=...&startDate=...&endDate=...
  * Returns JSON data for client-side rendering into CSV/XLSX/PDF.
  */
 export async function GET(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
 
   const { searchParams } = new URL(request.url)
   const type = searchParams.get('type')
