@@ -507,6 +507,17 @@ model Photo {
   @@map("photos")
 }
 
+// ── System Preferences ───────────────────────────────────────────────────────
+// Key-value store for app-wide settings (expense categories, PM fee defaults, etc.)
+
+model SystemPreference {
+  key       String   @id
+  value     Json     @db.JsonB
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("system_preferences")
+}
+
 // ── Activity Log ──────────────────────────────────────────────────────────────
 
 model ActivityLog {
