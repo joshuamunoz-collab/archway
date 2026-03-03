@@ -14,7 +14,6 @@ import {
   BarChart3,
   Settings,
   AlertTriangle,
-  LogOut,
   ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -197,17 +196,16 @@ export function Sidebar({ userName, userRole, logoUrl, errorCount }: SidebarProp
           <button
             type="button"
             onClick={handleSignOut}
-            className="flex items-center gap-1 rounded px-1.5 py-1 cursor-pointer"
-            style={{ fontSize: 11, color: '#6B7280', transition: 'all 0.15s ease' }}
+            className="cursor-pointer"
+            style={{ fontSize: 11, color: '#6B7280', transition: 'color 0.15s ease' }}
             onMouseEnter={e => {
               e.currentTarget.style.color = '#EF4444'
             }}
             onMouseLeave={e => {
               e.currentTarget.style.color = '#6B7280'
             }}
-            title="Sign out"
           >
-            <LogOut className="h-3.5 w-3.5" />
+            Sign out
           </button>
         </div>
       </div>
