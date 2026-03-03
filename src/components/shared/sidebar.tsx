@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -13,8 +12,8 @@ import {
   Hammer,
   DollarSign,
   BarChart3,
-  Upload,
   Settings,
+  AlertTriangle,
   LogOut,
   ChevronRight,
 } from 'lucide-react'
@@ -31,15 +30,6 @@ const navItems = [
   { label: 'Rehabs',      href: '/rehabs',       icon: Hammer },
   { label: 'Financials',  href: '/financials',   icon: DollarSign },
   { label: 'Reports',     href: '/reports',      icon: BarChart3 },
-  { label: 'Import',      href: '/import',       icon: Upload },
-]
-
-const settingsItems = [
-  { label: 'Entities',    href: '/settings/entities' },
-  { label: 'Users',       href: '/settings/users' },
-  { label: 'Categories',  href: '/settings/categories' },
-  { label: 'Preferences', href: '/settings/preferences' },
-  { label: 'Activity',    href: '/settings/activity' },
 ]
 
 const ROLE_LABELS: Record<string, string> = {
@@ -78,13 +68,14 @@ interface SidebarProps {
   userName: string
   userRole: string
   logoUrl?: string
+  errorCount?: number
 }
 
-export function Sidebar({ userName, userRole, logoUrl }: SidebarProps) {
+export function Sidebar({ userName, userRole, logoUrl, errorCount }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const isSettingsActive = pathname.startsWith('/settings')
-  const [settingsOpen, setSettingsOpen] = useState(isSettingsActive)
+  const isErrorLogActive = pathname === '/error-log'
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -138,13 +129,12 @@ export function Sidebar({ userName, userRole, logoUrl }: SidebarProps) {
           )
         })}
 
-        {/* Settings group */}
+        {/* Settings link */}
         <div className="pt-1">
-          <button
-            type="button"
-            onClick={() => setSettingsOpen((prev) => !prev)}
+          <Link
+            href="/settings"
             className={cn(
-              'flex w-full items-center gap-3 rounded-md py-2 text-sm cursor-pointer',
+              'flex items-center gap-3 rounded-md py-2 text-sm',
               isSettingsActive ? 'font-medium' : ''
             )}
             style={isSettingsActive ? activeStyle : idleStyle}
@@ -154,37 +144,34 @@ export function Sidebar({ userName, userRole, logoUrl }: SidebarProps) {
             <Settings className="h-4 w-4 shrink-0" />
             Settings
             <ChevronRight
-              className={cn('h-3 w-3 ml-auto transition-transform', (settingsOpen || isSettingsActive) && 'rotate-90')}
-              style={{ color: (settingsOpen || isSettingsActive) ? '#FFFFFF' : '#6B7280' }}
+              className="h-3 w-3 ml-auto"
+              style={{ color: isSettingsActive ? '#FFFFFF' : '#6B7280' }}
             />
-          </button>
-
-          {(settingsOpen || isSettingsActive) && (
-            <div className="ml-7 mt-0.5 space-y-0.5">
-              {settingsItems.map(({ label, href }) => {
-                const active = pathname === href
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={cn(
-                      'block rounded-md px-3 py-1.5 text-sm',
-                      active ? 'font-medium' : ''
-                    )}
-                    style={active
-                      ? { backgroundColor: 'rgba(255,255,255,0.1)', color: '#FFFFFF', transition: 'all 0.15s ease' }
-                      : { color: '#9CA3AF', transition: 'all 0.15s ease' }
-                    }
-                    onMouseEnter={active ? undefined : hoverIn}
-                    onMouseLeave={active ? undefined : hoverOut}
-                  >
-                    {label}
-                  </Link>
-                )
-              })}
-            </div>
-          )}
+          </Link>
         </div>
+
+        {/* Error Log */}
+        <Link
+          href="/error-log"
+          className={cn(
+            'flex items-center gap-3 rounded-md py-2 text-sm',
+            isErrorLogActive ? 'font-medium' : ''
+          )}
+          style={isErrorLogActive ? activeStyle : idleStyle}
+          onMouseEnter={isErrorLogActive ? undefined : hoverIn}
+          onMouseLeave={isErrorLogActive ? undefined : hoverOut}
+        >
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          Error Log
+          {errorCount != null && errorCount > 0 && (
+            <span
+              className="ml-auto flex items-center justify-center rounded-full px-1.5 font-semibold text-white"
+              style={{ fontSize: 10, minWidth: 18, height: 18, backgroundColor: '#EF4444' }}
+            >
+              {errorCount}
+            </span>
+          )}
+        </Link>
       </nav>
 
       {/* Divider */}
@@ -201,30 +188,28 @@ export function Sidebar({ userName, userRole, logoUrl }: SidebarProps) {
               {(userName?.[0] ?? 'U').toUpperCase()}
             </span>
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-xs font-medium truncate" style={{ color: '#FFFFFF' }}>{userName}</p>
             <p className="text-xs truncate" style={{ color: '#9CA3AF' }}>
               {ROLE_LABELS[userRole] ?? userRole}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="flex items-center gap-1 rounded px-1.5 py-1 cursor-pointer"
+            style={{ fontSize: 11, color: '#6B7280', transition: 'all 0.15s ease' }}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = '#EF4444'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = '#6B7280'
+            }}
+            title="Sign out"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="w-full flex items-center gap-2 rounded-md px-3 py-1.5 text-sm cursor-pointer"
-          style={{ color: '#9CA3AF', transition: 'all 0.15s ease' }}
-          onMouseEnter={e => {
-            e.currentTarget.style.color = '#FFFFFF'
-            e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.color = '#9CA3AF'
-            e.currentTarget.style.backgroundColor = 'transparent'
-          }}
-        >
-          <LogOut className="h-4 w-4" />
-          Sign out
-        </button>
       </div>
     </aside>
   )
