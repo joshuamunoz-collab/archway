@@ -13,7 +13,6 @@ import {
   DollarSign,
   BarChart3,
   Settings,
-  AlertTriangle,
   ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -67,14 +66,12 @@ interface SidebarProps {
   userName: string
   userRole: string
   logoUrl?: string
-  errorCount?: number
 }
 
-export function Sidebar({ userName, userRole, logoUrl, errorCount }: SidebarProps) {
+export function Sidebar({ userName, userRole, logoUrl }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const isSettingsActive = pathname.startsWith('/settings')
-  const isErrorLogActive = pathname === '/error-log'
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -148,29 +145,6 @@ export function Sidebar({ userName, userRole, logoUrl, errorCount }: SidebarProp
             />
           </Link>
         </div>
-
-        {/* Error Log */}
-        <Link
-          href="/error-log"
-          className={cn(
-            'flex items-center gap-3 rounded-md py-2 text-sm',
-            isErrorLogActive ? 'font-medium' : ''
-          )}
-          style={isErrorLogActive ? activeStyle : idleStyle}
-          onMouseEnter={isErrorLogActive ? undefined : hoverIn}
-          onMouseLeave={isErrorLogActive ? undefined : hoverOut}
-        >
-          <AlertTriangle className="h-4 w-4 shrink-0" />
-          Error Log
-          {errorCount != null && errorCount > 0 && (
-            <span
-              className="ml-auto flex items-center justify-center rounded-full px-1.5 font-semibold text-white"
-              style={{ fontSize: 10, minWidth: 18, height: 18, backgroundColor: '#EF4444' }}
-            >
-              {errorCount}
-            </span>
-          )}
-        </Link>
       </nav>
 
       {/* Divider */}

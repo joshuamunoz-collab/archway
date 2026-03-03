@@ -3,8 +3,6 @@ import { redirect } from 'next/navigation'
 import { Sidebar } from './sidebar'
 import { GlobalSearch } from './global-search'
 import { CreateNoteDialog } from './create-note-dialog'
-import { getOpenErrorCount } from '@/lib/mock-errors'
-
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -37,11 +35,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
   const userName = profile?.fullName ?? user.email ?? 'User'
   const userRole = profile?.role ?? ''
-  const errorCount = getOpenErrorCount()
-
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar userName={userName} userRole={userRole} logoUrl={logoUrl} errorCount={errorCount} />
+      <Sidebar userName={userName} userRole={userRole} logoUrl={logoUrl} />
       <div className="ml-60 min-h-screen flex flex-col">
         {/* Top header with search */}
         <header className="sticky top-0 z-30 h-14 shrink-0 border-b bg-white/80 backdrop-blur-sm flex items-center px-6 gap-4">
