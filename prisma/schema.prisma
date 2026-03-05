@@ -91,6 +91,7 @@ model Property {
   beds         Int?
   baths        Decimal?  @db.Decimal(3, 1)
   sqft         Int?
+  zestimate    Int?
   yearBuilt    Int?      @map("year_built")
   isSection8   Boolean   @default(false) @map("is_section_8")
   status       String    @default("vacant") // occupied | vacant | rehab | pending_inspection | pending_packet

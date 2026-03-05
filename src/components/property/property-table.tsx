@@ -39,7 +39,7 @@ export interface PropertyRow {
   propertyType: string | null
   beds: number | null
   baths: number | null
-  neighborhood: string | null
+  zestimate: number | null
   ward: string | null
   vacantSince: string | null  // ISO date string
 }
@@ -178,12 +178,17 @@ export function PropertyTable({
         enableGlobalFilter: false,
       },
       {
-        id: 'neighborhood',
-        accessorKey: 'neighborhood',
-        header: 'Neighborhood',
-        cell: ({ getValue }) => (
-          <span className="text-sm text-muted-foreground">{(getValue() as string | null) ?? '—'}</span>
-        ),
+        id: 'zestimate',
+        accessorKey: 'zestimate',
+        header: 'Zestimate',
+        cell: ({ getValue }) => {
+          const val = getValue() as number | null
+          return (
+            <span className="text-sm tabular-nums text-muted-foreground">
+              {val != null ? `$${val.toLocaleString()}` : '—'}
+            </span>
+          )
+        },
         enableSorting: true,
         enableGlobalFilter: false,
       },
@@ -317,7 +322,7 @@ export function PropertyTable({
                 Type: p.propertyType ?? '',
                 Beds: p.beds ?? '',
                 Baths: p.baths ?? '',
-                Neighborhood: p.neighborhood ?? '',
+                Zestimate: p.zestimate != null ? `$${p.zestimate.toLocaleString()}` : '',
                 Ward: p.ward ?? '',
                 'Vacant Since': p.vacantSince ?? '',
               }
@@ -343,7 +348,7 @@ export function PropertyTable({
                 Type: p.propertyType ?? '',
                 Beds: p.beds ?? '',
                 Baths: p.baths ?? '',
-                Neighborhood: p.neighborhood ?? '',
+                Zestimate: p.zestimate != null ? `$${p.zestimate.toLocaleString()}` : '',
                 Ward: p.ward ?? '',
                 'Vacant Since': p.vacantSince ?? '',
               }

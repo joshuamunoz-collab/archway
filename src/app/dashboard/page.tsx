@@ -43,7 +43,7 @@ export default async function DashboardPage() {
         propertyType: true,
         beds: true,
         baths: true,
-        neighborhood: true,
+        zestimate: true,
         ward: true,
         entity: { select: { id: true, name: true } },
       },
@@ -207,7 +207,7 @@ export default async function DashboardPage() {
     propertyType: p.propertyType ?? null,
     beds: p.beds ?? null,
     baths: p.baths !== null && p.baths !== undefined ? Number(p.baths) : null,
-    neighborhood: p.neighborhood ?? null,
+    zestimate: p.zestimate ?? null,
     ward: p.ward ?? null,
     vacantSince: p.vacantSince?.toISOString().split('T')[0] ?? null,
   }))

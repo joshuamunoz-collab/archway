@@ -26,7 +26,7 @@ export default async function PropertiesPage() {
     propertyType: p.propertyType,
     beds: p.beds,
     baths: p.baths !== null ? Number(p.baths) : null,
-    neighborhood: p.neighborhood,
+    zestimate: p.zestimate,
     ward: p.ward,
     vacantSince: p.vacantSince ? p.vacantSince.toISOString() : null,
   }))
