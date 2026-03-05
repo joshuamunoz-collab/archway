@@ -124,6 +124,7 @@ model Property {
   documents         Document[]
   photos            Photo[]
   quickNoteMentions QuickNoteProperty[]
+  propertyDetails   PropertyDetails?
 
   @@index([entityId], map: "idx_properties_entity")
   @@index([status], map: "idx_properties_status")
@@ -616,4 +617,31 @@ model QuickNoteProperty {
   @@index([noteId], map: "idx_quick_note_properties_note")
   @@index([propertyId], map: "idx_quick_note_properties_property")
   @@map("quick_note_properties")
+}
+
+// ── Property Details (synced from city records) ──────────────────────────────
+// 1:1 relation to Property. Stores data fetched from ArcGIS / city assessor.
+
+model PropertyDetails {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId     String    @unique @map("property_id") @db.Uuid
+  parcelNumber   String?   @map("parcel_number")
+  bedrooms       Int?
+  bathrooms      Decimal?  @db.Decimal(3, 1)
+  sqft           Int?
+  lotSize        Decimal?  @map("lot_size") @db.Decimal(10, 2)
+  yearBuilt      Int?      @map("year_built")
+  zoning         String?
+  assessedValue  Decimal?  @map("assessed_value") @db.Decimal(12, 2)
+  ward           String?
+  neighborhood   String?
+  cityRecordUrl  String?   @map("city_record_url")
+  lastSyncedAt   DateTime? @map("last_synced_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@map("property_details")
 }

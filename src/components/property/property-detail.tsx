@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { ArrowLeft, MapPin, Building2, DollarSign, ChevronDown } from 'lucide-react'
+import { ArrowLeft, MapPin, Building2, DollarSign, ExternalLink } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -20,6 +20,7 @@ import { DocumentsTab } from './tabs/documents-tab'
 import { PhotosTab } from './tabs/photos-tab'
 import { NotesTab } from './tabs/notes-tab'
 import { ActivityTab } from './tabs/activity-tab'
+import { CitySyncButton } from './city-sync-dialog'
 import type { PropertyDetailData } from '@/types/property'
 import { cn } from '@/lib/utils'
 
@@ -129,6 +130,18 @@ export function PropertyDetail({ data }: { data: PropertyDetailData }) {
                   </Button>
                 </a>
               )}
+              {data.parcelNumber && (
+                <a
+                  href={`https://www.stlouis-mo.gov/data/address-search/index.cfm?addr=${encodeURIComponent(data.addressLine1)}&stname=&stnum=`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs h-7">
+                    <ExternalLink className="h-3.5 w-3.5" /> View City Record
+                  </Button>
+                </a>
+              )}
+              <CitySyncButton propertyId={data.id} parcelNumber={data.parcelNumber} />
 
               {/* Status changer */}
               <Select
