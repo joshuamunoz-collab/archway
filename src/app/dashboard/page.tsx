@@ -232,7 +232,6 @@ export default async function DashboardPage() {
           expectedMonthlyIncome={expectedIncome}
           mtdExpenses={mtdExpenses}
           lastMonthExpenses={lmExpenses}
-          highRiskVacantCount={highRiskVacant.length}
         />
 
         {/* Alert Panels */}
