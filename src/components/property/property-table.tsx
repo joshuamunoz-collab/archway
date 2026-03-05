@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useCallback, useState } from 'react'
 import Link from 'next/link'
 import {
   useReactTable,
@@ -218,7 +218,7 @@ export function PropertyTable({
   })
 
   const rows = table.getRowModel().rows
-  const totalVacant = data.filter(p => p.status === 'vacant').length
+  const totalVacant = useMemo(() => data.filter(p => p.status === 'vacant').length, [data])
 
   const activeStatus = (columnFilters.find(f => f.id === 'status')?.value as string) ?? ''
   const activeEntity = (columnFilters.find(f => f.id === 'entityName')?.value as string) ?? ''
@@ -306,19 +306,22 @@ export function PropertyTable({
           variant="outline"
           className="h-8 text-xs gap-1.5"
           onClick={() => {
-            const exportRows = rows.map(r => r.original).map(p => ({
-              Address: p.addressLine1,
-              Unit: p.addressLine2 ?? '',
-              Status: p.status,
-              Entity: p.entityName,
-              'Section 8': p.isSection8 ? 'Yes' : 'No',
-              Type: p.propertyType ?? '',
-              Beds: p.beds ?? '',
-              Baths: p.baths ?? '',
-              Neighborhood: p.neighborhood ?? '',
-              Ward: p.ward ?? '',
-              'Vacant Since': p.vacantSince ?? '',
-            }))
+            const exportRows = rows.map(r => {
+              const p = r.original
+              return {
+                Address: p.addressLine1,
+                Unit: p.addressLine2 ?? '',
+                Status: p.status,
+                Entity: p.entityName,
+                'Section 8': p.isSection8 ? 'Yes' : 'No',
+                Type: p.propertyType ?? '',
+                Beds: p.beds ?? '',
+                Baths: p.baths ?? '',
+                Neighborhood: p.neighborhood ?? '',
+                Ward: p.ward ?? '',
+                'Vacant Since': p.vacantSince ?? '',
+              }
+            })
             downloadCsv(`properties_${new Date().toISOString().split('T')[0]}.csv`, exportRows)
           }}
         >
@@ -329,19 +332,22 @@ export function PropertyTable({
           variant="outline"
           className="h-8 text-xs gap-1.5"
           onClick={() => {
-            const exportRows = rows.map(r => r.original).map(p => ({
-              Address: p.addressLine1,
-              Unit: p.addressLine2 ?? '',
-              Status: p.status,
-              Entity: p.entityName,
-              'Section 8': p.isSection8 ? 'Yes' : 'No',
-              Type: p.propertyType ?? '',
-              Beds: p.beds ?? '',
-              Baths: p.baths ?? '',
-              Neighborhood: p.neighborhood ?? '',
-              Ward: p.ward ?? '',
-              'Vacant Since': p.vacantSince ?? '',
-            }))
+            const exportRows = rows.map(r => {
+              const p = r.original
+              return {
+                Address: p.addressLine1,
+                Unit: p.addressLine2 ?? '',
+                Status: p.status,
+                Entity: p.entityName,
+                'Section 8': p.isSection8 ? 'Yes' : 'No',
+                Type: p.propertyType ?? '',
+                Beds: p.beds ?? '',
+                Baths: p.baths ?? '',
+                Neighborhood: p.neighborhood ?? '',
+                Ward: p.ward ?? '',
+                'Vacant Since': p.vacantSince ?? '',
+              }
+            })
             downloadXlsx(`properties_${new Date().toISOString().split('T')[0]}.xlsx`, exportRows, 'Properties')
           }}
         >

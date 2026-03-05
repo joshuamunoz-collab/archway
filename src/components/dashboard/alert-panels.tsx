@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import Link from 'next/link'
 import { AlertCircle, AlertTriangle, CheckCircle2, Clock, FileWarning, ClipboardList } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -49,7 +50,7 @@ interface AlertPanelsProps {
   unacknowledgedTasks?: OverdueTask[]
 }
 
-export function AlertPanels({
+export const AlertPanels = memo(function AlertPanels({
   highRiskVacant,
   watchVacant,
   openNotices,
@@ -221,4 +222,4 @@ export function AlertPanels({
       )}
     </div>
   )
-}
+})

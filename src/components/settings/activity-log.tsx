@@ -51,19 +51,20 @@ export function ActivityLog() {
 
   const [error, setError] = useState<string | null>(null)
 
-  const fetchLogs = useCallback(async () => {
+  const fetchLogs = useCallback(async (signal?: AbortSignal) => {
     setLoading(true)
     setError(null)
     try {
       const params = new URLSearchParams({ page: String(page), limit: '50' })
       if (entityType !== 'all') params.set('entityType', entityType)
-      const res = await fetch(`/api/activity?${params}`)
+      const res = await fetch(`/api/activity?${params}`, { signal })
       if (!res.ok) throw new Error('Failed to load activity log')
       const data = await res.json()
       setLogs(data.logs ?? [])
       setTotal(data.total ?? 0)
       setPages(data.pages ?? 1)
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
       setError(err instanceof Error ? err.message : 'Failed to load')
       setLogs([])
     } finally {
@@ -71,7 +72,11 @@ export function ActivityLog() {
     }
   }, [page, entityType])
 
-  useEffect(() => { fetchLogs() }, [fetchLogs])
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchLogs(controller.signal)
+    return () => controller.abort()
+  }, [fetchLogs])
 
   function handleTypeChange(val: string) {
     setEntityType(val)
@@ -102,7 +107,7 @@ export function ActivityLog() {
         ) : error ? (
           <div className="py-10 text-center">
             <p className="text-sm text-destructive">{error}</p>
-            <Button variant="outline" size="sm" className="mt-2" onClick={fetchLogs}>Retry</Button>
+            <Button variant="outline" size="sm" className="mt-2" onClick={() => fetchLogs()}>Retry</Button>
           </div>
         ) : logs.length === 0 ? (
           <div className="py-10 text-center">

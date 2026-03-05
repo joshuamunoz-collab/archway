@@ -28,19 +28,21 @@ export async function POST(request: Request) {
     })
     updated = billIds.length
 
-    for (const billId of billIds) {
-      const bill = await prisma.pmBill.findUnique({ where: { id: billId } })
-      if (bill) {
-        await prisma.activityLog.create({
-          data: {
-            entityType: 'property',
-            entityId: bill.propertyId,
-            action: 'bill_approved',
-            details: { billId, totalAmount: Number(bill.totalAmount) },
-            userId: auth.user.id,
-          },
-        })
-      }
+    // Batch fetch bills for activity logging instead of N+1
+    const approvedBills = await prisma.pmBill.findMany({
+      where: { id: { in: billIds } },
+      select: { id: true, propertyId: true, totalAmount: true },
+    })
+    if (approvedBills.length > 0) {
+      await prisma.activityLog.createMany({
+        data: approvedBills.map(bill => ({
+          entityType: 'property',
+          entityId: bill.propertyId,
+          action: 'bill_approved',
+          details: { billId: bill.id, totalAmount: Number(bill.totalAmount) },
+          userId: auth.user.id,
+        })),
+      })
     }
   } else if (action === 'pay') {
     const paidDateValue = paidDate ? new Date(paidDate) : new Date()

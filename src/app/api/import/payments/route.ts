@@ -20,6 +20,19 @@ export async function POST(request: Request) {
     select: { id: true, addressLine1: true },
   })
 
+  // Batch-load all active leases to avoid N+1 queries per row
+  const activeLeases = await prisma.lease.findMany({
+    where: { status: 'active' },
+    select: { id: true, propertyId: true, startDate: true },
+    orderBy: { startDate: 'desc' },
+  })
+  const leaseByProperty = new Map<string, string>()
+  for (const lease of activeLeases) {
+    if (!leaseByProperty.has(lease.propertyId)) {
+      leaseByProperty.set(lease.propertyId, lease.id)
+    }
+  }
+
   const results: { row: number; status: 'imported' | 'error'; message?: string }[] = []
   let imported = 0
 
@@ -44,16 +57,13 @@ export async function POST(request: Request) {
         continue
       }
 
-      // Find active lease for leaseId
-      const activeLease = await prisma.lease.findFirst({
-        where: { propertyId: property.id, status: 'active' },
-        orderBy: { startDate: 'desc' },
-      })
+      // Use pre-loaded lease map instead of per-row DB query
+      const leaseId = leaseByProperty.get(property.id) ?? null
 
       await prisma.payment.create({
         data: {
           propertyId: property.id,
-          leaseId: activeLease?.id ?? null,
+          leaseId,
           date: new Date(date),
           amount: parseFloat(String(amount)),
           type: String(type).toLowerCase().trim(),

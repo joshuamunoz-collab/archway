@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import {
   ResponsiveContainer,
   LineChart,
@@ -32,7 +33,9 @@ const ENTITY_COLORS = ['#2563EB', '#10B981', '#F59E0B', '#8B5CF6']
 const currencyFormatter = (v: number) =>
   v === 0 ? '$0' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v)
 
-export function PortfolioCharts({
+const tooltipFormatter = (v: unknown) => formatCurrency(Number(v))
+
+export const PortfolioCharts = memo(function PortfolioCharts({
   monthlyData,
   entityIncome,
 }: {
@@ -60,7 +63,7 @@ export function PortfolioCharts({
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="month" tick={{ fontSize: 11 }} tickLine={false} />
                 <YAxis tickFormatter={currencyFormatter} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={64} />
-                <Tooltip formatter={(v) => formatCurrency(Number(v))} />
+                <Tooltip formatter={tooltipFormatter} />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
                 <Line type="monotone" dataKey="income" stroke="#10B981" strokeWidth={2} dot={false} name="Income" />
                 <Line type="monotone" dataKey="expenses" stroke="#EF4444" strokeWidth={2} dot={false} name="Expenses" />
@@ -86,7 +89,7 @@ export function PortfolioCharts({
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} tickLine={false} />
                 <YAxis tickFormatter={currencyFormatter} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={64} />
-                <Tooltip formatter={(v) => formatCurrency(Number(v))} />
+                <Tooltip formatter={tooltipFormatter} />
                 <Bar dataKey="income" name="Income" radius={[3, 3, 0, 0]}>
                   {entityIncome.map((_entry, index) => (
                     <Cell key={`cell-${index}`} fill={ENTITY_COLORS[index % ENTITY_COLORS.length]} />
@@ -99,4 +102,4 @@ export function PortfolioCharts({
       </Card>
     </div>
   )
-}
+})

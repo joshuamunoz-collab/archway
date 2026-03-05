@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -23,7 +24,7 @@ interface KpiCardsProps {
   highRiskVacantCount: number  // 45+ days
 }
 
-export function KpiCards({
+export const KpiCards = memo(function KpiCards({
   statusCounts,
   mtdIncome,
   expectedMonthlyIncome,
@@ -130,4 +131,4 @@ export function KpiCards({
       </Card>
     </div>
   )
-}
+})

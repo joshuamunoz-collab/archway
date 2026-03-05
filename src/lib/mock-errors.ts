@@ -13,7 +13,7 @@ export const mockErrors: ErrorEntry[] = [
     message: 'Failed to fetch user data: timeout after 30s',
     severity: 'error',
     source: 'API',
-    status: 'open',
+    status: 'resolved',
     timestamp: '2026-03-04T09:23:14Z',
   },
   {
@@ -21,7 +21,7 @@ export const mockErrors: ErrorEntry[] = [
     message: 'Component render exceeded 16ms threshold',
     severity: 'warning',
     source: 'UI',
-    status: 'open',
+    status: 'resolved',
     timestamp: '2026-03-04T08:45:02Z',
   },
   {
@@ -37,7 +37,7 @@ export const mockErrors: ErrorEntry[] = [
     message: 'Query latency spike detected: 2.4s avg',
     severity: 'warning',
     source: 'Database',
-    status: 'open',
+    status: 'resolved',
     timestamp: '2026-03-04T07:58:33Z',
   },
   {
@@ -61,7 +61,7 @@ export const mockErrors: ErrorEntry[] = [
     message: 'Rate limit exceeded for endpoint /v2/categories',
     severity: 'error',
     source: 'API',
-    status: 'open',
+    status: 'resolved',
     timestamp: '2026-03-04T10:05:19Z',
   },
   {
@@ -69,7 +69,7 @@ export const mockErrors: ErrorEntry[] = [
     message: 'Memory usage exceeded 80% warning threshold',
     severity: 'warning',
     source: 'UI',
-    status: 'open',
+    status: 'resolved',
     timestamp: '2026-03-04T10:12:44Z',
   },
 ]

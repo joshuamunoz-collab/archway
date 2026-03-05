@@ -27,6 +27,7 @@ model UserProfile {
   activityLogs   ActivityLog[]
   quickNotes     QuickNote[]
 
+  @@index([email], map: "idx_user_profiles_email")
   @@map("user_profiles")
 }
 
@@ -127,6 +128,8 @@ model Property {
   @@index([entityId], map: "idx_properties_entity")
   @@index([status], map: "idx_properties_status")
   @@index([parentPropertyId], map: "idx_properties_parent")
+  @@index([vacantSince], map: "idx_properties_vacant_since")
+  @@index([status, vacantSince], map: "idx_properties_status_vacant")
   @@map("properties")
 }
 
@@ -206,6 +209,9 @@ model Payment {
   @@index([propertyId], map: "idx_payments_property")
   @@index([date], map: "idx_payments_date")
   @@index([type], map: "idx_payments_type")
+  @@index([propertyId, date], map: "idx_payments_property_date")
+  @@index([leaseId], map: "idx_payments_lease")
+  @@index([bankAccountId], map: "idx_payments_bank_account")
   @@map("payments")
 }
 
@@ -241,6 +247,7 @@ model PmBill {
 
   @@index([status], map: "idx_pm_bills_status")
   @@index([propertyId], map: "idx_pm_bills_property")
+  @@index([bankAccountId], map: "idx_pm_bills_bank_account")
   @@map("pm_bills")
 }
 
@@ -258,6 +265,7 @@ model PmBillLineItem {
   // Relations
   bill PmBill @relation(fields: [billId], references: [id], onDelete: Cascade)
 
+  @@index([billId], map: "idx_pm_bill_line_items_bill")
   @@map("pm_bill_line_items")
 }
 
@@ -304,6 +312,9 @@ model Expense {
   @@index([propertyId], map: "idx_expenses_property")
   @@index([date], map: "idx_expenses_date")
   @@index([category], map: "idx_expenses_category")
+  @@index([propertyId, date], map: "idx_expenses_property_date")
+  @@index([bankAccountId], map: "idx_expenses_bank_account")
+  @@index([billId], map: "idx_expenses_bill")
   @@map("expenses")
 }
 
@@ -328,6 +339,7 @@ model InsurancePolicy {
   // Relations
   property Property @relation(fields: [propertyId], references: [id])
 
+  @@index([propertyId], map: "idx_insurance_policies_property")
   @@map("insurance_policies")
 }
 
@@ -348,6 +360,7 @@ model PropertyTax {
   // Relations
   property Property @relation(fields: [propertyId], references: [id])
 
+  @@index([propertyId], map: "idx_property_taxes_property")
   @@map("property_taxes")
 }
 
@@ -374,6 +387,7 @@ model CityNotice {
   property Property @relation(fields: [propertyId], references: [id])
   pmTasks  PmTask[]
 
+  @@index([propertyId], map: "idx_city_notices_property")
   @@map("city_notices")
 }
 
@@ -445,6 +459,7 @@ model RehabProject {
   milestones RehabMilestone[]
   photos     Photo[]
 
+  @@index([propertyId], map: "idx_rehab_projects_property")
   @@map("rehab_projects")
 }
 
@@ -486,6 +501,7 @@ model Inspection {
   // Relations
   property Property @relation(fields: [propertyId], references: [id])
 
+  @@index([propertyId], map: "idx_inspections_property")
   @@map("inspections")
 }
 
@@ -506,6 +522,8 @@ model Document {
   property Property? @relation(fields: [propertyId], references: [id])
   tenant   Tenant?   @relation(fields: [tenantId], references: [id])
 
+  @@index([propertyId], map: "idx_documents_property")
+  @@index([tenantId], map: "idx_documents_tenant")
   @@map("documents")
 }
 
@@ -525,6 +543,8 @@ model Photo {
   property     Property      @relation(fields: [propertyId], references: [id])
   rehabProject RehabProject? @relation(fields: [rehabProjectId], references: [id])
 
+  @@index([propertyId], map: "idx_photos_property")
+  @@index([rehabProjectId], map: "idx_photos_rehab_project")
   @@map("photos")
 }
 

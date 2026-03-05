@@ -4,9 +4,21 @@ import { prisma } from '@/lib/prisma'
 import { requireAuth, requireAdmin } from '@/lib/auth'
 import { EXPENSE_CATEGORIES, ExpenseCategory } from '@/lib/expense-categories'
 
+// ── In-memory cache for categories (avoids DB hit on every request) ──────────
+let categoriesCache: ExpenseCategory[] | null = null
+let categoriesCacheTime = 0
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
 export async function GET() {
   const auth = await requireAuth()
   if (auth instanceof NextResponse) return auth
+
+  // Return cached if fresh
+  if (categoriesCache && Date.now() - categoriesCacheTime < CACHE_TTL_MS) {
+    return NextResponse.json(categoriesCache, {
+      headers: { 'Cache-Control': 'private, max-age=300' },
+    })
+  }
 
   const pref = await prisma.systemPreference.findUnique({
     where: { key: 'expense_categories' },
@@ -14,7 +26,13 @@ export async function GET() {
 
   const categories = pref ? (pref.value as unknown as ExpenseCategory[]) : EXPENSE_CATEGORIES
 
-  return NextResponse.json(categories)
+  // Update cache
+  categoriesCache = categories
+  categoriesCacheTime = Date.now()
+
+  return NextResponse.json(categories, {
+    headers: { 'Cache-Control': 'private, max-age=300' },
+  })
 }
 
 export async function PUT(request: Request) {
@@ -55,6 +73,10 @@ export async function PUT(request: Request) {
       userId: auth.user.id,
     },
   })
+
+  // Invalidate cache on update
+  categoriesCache = categories
+  categoriesCacheTime = Date.now()
 
   return NextResponse.json(categories)
 }

@@ -152,19 +152,28 @@ export function BillsTable({
     return list
   }, [initialBills, tab, search])
 
-  // KPI calculations
-  const needsReviewAmt = initialBills.filter(b => ['received', 'under_review'].includes(b.status)).reduce((s, b) => s + b.totalAmount, 0)
-  const needsReviewCount = initialBills.filter(b => ['received', 'under_review'].includes(b.status)).length
-  const approvedAmt = initialBills.filter(b => b.status === 'approved').reduce((s, b) => s + b.totalAmount, 0)
-  const approvedCount = initialBills.filter(b => b.status === 'approved').length
-  const now = new Date()
-  const paidThisMonth = initialBills
-    .filter(b => {
-      if (b.status !== 'paid' || !b.paidDate) return false
-      const d = new Date(b.paidDate)
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
-    })
-    .reduce((s, b) => s + b.totalAmount, 0)
+  // KPI calculations — memoized to avoid recalculating on every render
+  const { needsReviewAmt, needsReviewCount, approvedAmt, approvedCount, paidThisMonth } = useMemo(() => {
+    let nrAmt = 0, nrCount = 0, aAmt = 0, aCount = 0, ptm = 0
+    const now = new Date()
+    for (const b of initialBills) {
+      if (b.status === 'received' || b.status === 'under_review') {
+        nrAmt += b.totalAmount
+        nrCount++
+      }
+      if (b.status === 'approved') {
+        aAmt += b.totalAmount
+        aCount++
+      }
+      if (b.status === 'paid' && b.paidDate) {
+        const d = new Date(b.paidDate)
+        if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) {
+          ptm += b.totalAmount
+        }
+      }
+    }
+    return { needsReviewAmt: nrAmt, needsReviewCount: nrCount, approvedAmt: aAmt, approvedCount: aCount, paidThisMonth: ptm }
+  }, [initialBills])
 
   const totalLineItems = lineItems.reduce((s, li) => s + (Number(li.amount) || 0), 0)
 
