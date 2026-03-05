@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
-import { Upload, X } from 'lucide-react'
+import { Upload, X, RefreshCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Preferences {
@@ -28,6 +28,7 @@ export function PreferencesManager({ initial }: { initial: Preferences }) {
   const [saving, setSaving] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [refreshingEstimates, setRefreshingEstimates] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   function update<K extends keyof Preferences>(key: K, value: Preferences[K]) {
@@ -125,6 +126,27 @@ export function PreferencesManager({ initial }: { initial: Preferences }) {
 
   function handleLogoRemove() {
     update('companyLogoUrl', '')
+  }
+
+  async function handleRefreshEstimates() {
+    setRefreshingEstimates(true)
+    try {
+      const res = await fetch('/api/properties/estimates', { method: 'POST' })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to refresh estimates')
+      }
+      const result = await res.json()
+      if (result.failed > 0) {
+        toast.warning(`Updated ${result.updated} of ${result.total} properties. ${result.failed} failed.`)
+      } else {
+        toast.success(`Updated estimates for ${result.updated} properties`)
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to refresh estimates')
+    } finally {
+      setRefreshingEstimates(false)
+    }
   }
 
   return (
@@ -342,6 +364,33 @@ export function PreferencesManager({ initial }: { initial: Preferences }) {
             value={prefs.leaseExpiryWarningDays}
             onChange={e => update('leaseExpiryWarningDays', parseInt(e.target.value) || 60)}
           />
+        </div>
+      </Card>
+
+      <Separator />
+
+      {/* Property Valuations */}
+      <Card className="p-5 space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">Property Valuations</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Fetch home value estimates from RentCast for all properties
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefreshEstimates}
+            disabled={refreshingEstimates}
+            className="gap-1.5"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshingEstimates ? 'animate-spin' : ''}`} />
+            {refreshingEstimates ? 'Refreshing...' : 'Refresh Estimates'}
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            Uses RentCast API — may take a few seconds for all properties
+          </span>
         </div>
       </Card>
     </div>
