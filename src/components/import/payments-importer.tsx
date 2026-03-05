@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import Papa from 'papaparse'
+import * as XLSX from 'xlsx'
 import { Upload, Download, CheckCircle2, XCircle, AlertCircle, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -41,16 +42,29 @@ export function PaymentsImporter() {
   const validRows = rows.filter(r => r._errors.length === 0)
   const errorRows = rows.filter(r => r._errors.length > 0)
 
-  function parseFile(file: File) {
-    const reader = new FileReader()
-    reader.onload = e => {
-      const text = e.target?.result as string
-      const result = Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: true })
-      const parsed = result.data.map(raw => ({ ...raw, _errors: validateRow(raw) } as ParsedRow))
-      setRows(parsed)
-      setStep('preview')
+  function handleFile(file: File) {
+    const ext = file.name.split('.').pop()?.toLowerCase()
+    if (ext === 'xlsx' || ext === 'xls') {
+      const reader = new FileReader()
+      reader.onload = e => {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer)
+        const wb = XLSX.read(data, { type: 'array' })
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        const jsonRows = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: '', raw: false })
+        setRows(jsonRows.map(raw => ({ ...raw, _errors: validateRow(raw) }) as ParsedRow))
+        setStep('preview')
+      }
+      reader.readAsArrayBuffer(file)
+    } else {
+      const reader = new FileReader()
+      reader.onload = e => {
+        const text = e.target?.result as string
+        const result = Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: true })
+        setRows(result.data.map(raw => ({ ...raw, _errors: validateRow(raw) }) as ParsedRow))
+        setStep('preview')
+      }
+      reader.readAsText(file)
     }
-    reader.readAsText(file)
   }
 
   async function runImport() {
@@ -59,7 +73,7 @@ export function PaymentsImporter() {
     const res = await fetch('/api/import/payments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rows: validRows.map(r => { const { _errors, ...rest } = r; void _errors; return rest }) }),
+      body: JSON.stringify({ rows: validRows.map(r => { const { _errors, property_address, ...rest } = r; void _errors; return { ...rest, addressLine1: property_address ?? rest.addressLine1 } }) }),
     })
     const data = await res.json()
     setResults(data.results ?? [])
@@ -84,15 +98,15 @@ export function PaymentsImporter() {
             )}
             onDragOver={e => { e.preventDefault(); setDragOver(true) }}
             onDragLeave={() => setDragOver(false)}
-            onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) parseFile(f) }}
+            onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
           >
             <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm font-medium">Drag & drop your payments CSV here</p>
+            <p className="text-sm font-medium">Drag & drop your payments CSV or Excel file</p>
             <p className="text-xs text-muted-foreground mt-1">or</p>
             <Button size="sm" variant="outline" className="mt-3" onClick={() => fileRef.current?.click()}>
               Choose File
             </Button>
-            <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) parseFile(f) }} />
+            <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
           </div>
           <div className="mt-4 flex justify-center">
             <Button size="sm" variant="ghost" onClick={downloadTemplate} className="gap-1.5 text-xs text-muted-foreground">

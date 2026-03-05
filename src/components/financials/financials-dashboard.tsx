@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import {
   ResponsiveContainer,
@@ -13,9 +14,12 @@ import {
   Tooltip,
   Legend,
 } from 'recharts'
+import { Upload } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { FinancialsImportDialog } from './financials-import-dialog'
 
 interface EntitySummary {
   id: string
@@ -55,12 +59,22 @@ export function FinancialsDashboard({
   expenseByCategoryData,
   entitySummaries,
 }: Props) {
+  const [importOpen, setImportOpen] = useState(false)
   const ytdNoi = ytdIncome - ytdExpenses
   const mtdNoi = mtdIncome - mtdExpenses
   const hasChartData = monthlyChartData.some(d => d.income > 0 || d.expenses > 0)
 
   return (
     <div className="space-y-6">
+      {/* Header with Import button */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">Portfolio financial overview</p>
+        <Button size="sm" variant="outline" onClick={() => setImportOpen(true)} className="gap-1.5">
+          <Upload className="h-4 w-4" /> Import
+        </Button>
+      </div>
+      <FinancialsImportDialog open={importOpen} onOpenChange={setImportOpen} />
+
       {/* Portfolio KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard label="YTD Income" value={formatCurrency(ytdIncome)} />
