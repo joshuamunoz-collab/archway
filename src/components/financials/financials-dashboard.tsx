@@ -61,7 +61,7 @@ function parseSheet(ws: XLSX.WorkSheet): ParsedSheet {
 
   let portfolio: string | null = null
   let month: string | null = null
-  const properties: Record<string, { rent: number; pm_fee: number; tenants: Set<string>; payee: Set<string> }> = {}
+  const properties: Record<string, { rent: number; pm_fee: number; tenants: string[]; payee: string[] }> = {}
   const maintenance: Record<string, MaintenanceItem[]> = {}
   let inDetails = false
 
@@ -116,11 +116,11 @@ function parseSheet(ws: XLSX.WorkSheet): ParsedSheet {
         const rent = typeof row[9] === 'number' ? row[9] : 0
         const pm = typeof row[10] === 'number' ? row[10] : 0
         if (addr && !addr.match(/^\d{4}-\d{2}$/) && addr !== 'None') {
-          if (!properties[addr]) properties[addr] = { rent: 0, pm_fee: 0, tenants: new Set(), payee: new Set() }
+          if (!properties[addr]) properties[addr] = { rent: 0, pm_fee: 0, tenants: [], payee: [] }
           properties[addr].rent += rent
           properties[addr].pm_fee += pm
-          if (tenant) properties[addr].tenants.add(tenant)
-          if (payee) properties[addr].payee.add(payee)
+          if (tenant && !properties[addr].tenants.includes(tenant)) properties[addr].tenants.push(tenant)
+          if (payee && !properties[addr].payee.includes(payee)) properties[addr].payee.push(payee)
         }
         gotoMaint(row)
       }
@@ -132,13 +132,13 @@ function parseSheet(ws: XLSX.WorkSheet): ParsedSheet {
   const allAddrs = new Set([...Object.keys(properties), ...Object.keys(maintenance)])
   const props: PropertyData[] = []
   for (const addr of allAddrs) {
-    const inf = properties[addr] || { rent: 0, pm_fee: 0, tenants: new Set<string>(), payee: new Set<string>() }
+    const inf = properties[addr] || { rent: 0, pm_fee: 0, tenants: [] as string[], payee: [] as string[] }
     const mItems = maintenance[addr] || []
     const mTotal = mItems.reduce((s, i) => s + i.amount, 0)
     props.push({
       address: addr,
-      tenant: [...(inf.tenants || [])].join(', '),
-      payee: [...(inf.payee || [])].join(', '),
+      tenant: (inf.tenants || []).join(', '),
+      payee: (inf.payee || []).join(', '),
       rent: Math.round(inf.rent * 100) / 100,
       pm_fee: Math.round(inf.pm_fee * 100) / 100,
       maintenance: Math.round(mTotal * 100) / 100,
@@ -352,7 +352,7 @@ const ENTITY_ORDER = ['Gateway City Ventures', 'Missouri Urban Development', 'Pr
 export function FinancialsDashboard() {
   const [portfolioData, setPortfolioData] = useState<PortfolioData>(() => {
     try {
-      const saved = localStorage.getItem('archway_financials')
+      const saved = localStorage.getItem('archway_financials_v2')
       return saved ? JSON.parse(saved) : {}
     } catch { return {} }
   })
@@ -365,7 +365,7 @@ export function FinancialsDashboard() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('archway_financials', JSON.stringify(portfolioData))
+      localStorage.setItem('archway_financials_v2', JSON.stringify(portfolioData))
     } catch (e) {
       console.warn('Could not save to localStorage:', e)
     }
@@ -458,18 +458,35 @@ export function FinancialsDashboard() {
           )}
           {hasData && (
             <button
-              onClick={() => { if (window.confirm('Clear all imported data?')) { setPortfolioData({}); localStorage.removeItem('archway_financials'); setSelectedMonth('YTD') } }}
-              style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid #fecaca', borderRadius: 7, padding: '7px 14px', background: '#fff', fontSize: 13, fontWeight: 500, color: '#ef4444', cursor: 'pointer' }}
+              onClick={() => {
+                if (window.confirm('Clear all imported financial data?')) {
+                  setPortfolioData({})
+                  localStorage.removeItem('archway_financials_v2')
+                  setSelectedMonth('YTD')
+                }
+              }}
+              style={{ border: '1px solid #fecaca', borderRadius: 7, padding: '7px 14px', background: '#fff', fontSize: 13, fontWeight: 500, color: '#ef4444', cursor: 'pointer' }}
             >
-              Clear
+              Clear All
             </button>
           )}
-          <button onClick={() => fileRef.current?.click()} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid #e5e7eb', borderRadius: 7, padding: '7px 14px', background: '#fff', fontSize: 13, fontWeight: 500, color: '#374151', cursor: 'pointer' }}>
+          <button
+            onClick={() => { if (fileRef.current) { fileRef.current.value = ''; fileRef.current.click() } }}
+            disabled={loading}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid #e5e7eb', borderRadius: 7, padding: '7px 14px', background: '#fff', fontSize: 13, fontWeight: 500, color: '#374151', cursor: 'pointer' }}
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
             {loading ? 'Importing\u2026' : 'Import'}
           </button>
-          <input ref={fileRef} type="file" accept=".zip,.xlsx" style={{ display: 'none' }}
-            onChange={e => { if (e.target.files?.length) handleFiles(Array.from(e.target.files)); e.target.value = '' }} />
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".zip,.xlsx"
+            style={{ display: 'none' }}
+            onChange={e => {
+              if (e.target.files?.length) handleFiles(Array.from(e.target.files))
+            }}
+          />
         </div>
       </div>
 
