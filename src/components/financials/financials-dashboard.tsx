@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import * as XLSX from 'xlsx'
 import JSZip from 'jszip'
@@ -350,13 +350,26 @@ function EntitySection({ name, agg, selectedMonth }: { name: string; agg: Aggreg
 const ENTITY_ORDER = ['Gateway City Ventures', 'Missouri Urban Development', 'Provo Partners', 'ZYZZX, LLC']
 
 export function FinancialsDashboard() {
-  const [portfolioData, setPortfolioData] = useState<PortfolioData>({})
+  const [portfolioData, setPortfolioData] = useState<PortfolioData>(() => {
+    try {
+      const saved = localStorage.getItem('archway_financials')
+      return saved ? JSON.parse(saved) : {}
+    } catch { return {} }
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [selectedMonth, setSelectedMonth] = useState('YTD')
   const [dragOver, setDragOver] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('archway_financials', JSON.stringify(portfolioData))
+    } catch (e) {
+      console.warn('Could not save to localStorage:', e)
+    }
+  }, [portfolioData])
 
   const handleFiles = useCallback(async (files: File[]) => {
     setLoading(true)
