@@ -98,8 +98,22 @@ function parseSheet(ws: XLSX.WorkSheet): ParsedSheet {
   }
 
   for (const row of rows) {
-    if (row[1] === 'Portfolio') { portfolio = row[2]; continue }
-    if (row[1] === 'Month Billed:') { month = row[2]; continue }
+    if (row[1] === 'Portfolio') {
+      portfolio = row[2] ? String(row[2]).trim() : null
+      continue
+    }
+    if (row[1] === 'Month Billed:') {
+      const raw = row[2]
+      if (raw instanceof Date) {
+        month = `${raw.getFullYear()}-${String(raw.getMonth() + 1).padStart(2, '0')}`
+      } else if (typeof raw === 'number') {
+        const d = XLSX.SSF.parse_date_code(raw)
+        month = `${d.y}-${String(d.m).padStart(2, '0')}`
+      } else {
+        month = String(raw).trim()
+      }
+      continue
+    }
     if (row[1] === 'Payment ID') { inDetails = true; continue }
 
     if (inDetails) {
@@ -147,6 +161,7 @@ function parseSheet(ws: XLSX.WorkSheet): ParsedSheet {
       noi: Math.round((inf.rent - mTotal - inf.pm_fee) * 100) / 100,
     })
   }
+  console.log('[parseSheet] portfolio:', portfolio, '| month:', month, '| props count:', props.length)
   return { portfolio, month, properties: props }
 }
 
@@ -159,6 +174,7 @@ async function parseZip(file: File): Promise<Record<string, Record<string, Prope
     const wb = XLSX.read(buf, { type: 'array', cellDates: true })
     const ws = wb.Sheets[wb.SheetNames[0]]
     const parsed = parseSheet(ws)
+    console.log('[parseZip] file:', zf.name, '| result:', parsed)
     if (parsed.portfolio && parsed.month) {
       if (!results[parsed.portfolio]) results[parsed.portfolio] = {}
       results[parsed.portfolio][parsed.month] = parsed.properties
