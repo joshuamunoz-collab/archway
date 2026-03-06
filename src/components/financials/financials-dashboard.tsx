@@ -362,7 +362,6 @@ export function FinancialsDashboard() {
     setLoading(true)
     setError(null)
     try {
-      const newData = { ...portfolioData }
       const monthsAdded: string[] = []
       for (const file of files) {
         const ext = file.name.split('.').pop()?.toLowerCase()
@@ -377,14 +376,25 @@ export function FinancialsDashboard() {
           if (r.portfolio && r.month) parsed[r.portfolio] = { [r.month]: r.properties }
         }
         for (const [pName, months] of Object.entries(parsed)) {
-          if (!newData[pName]) newData[pName] = {}
-          for (const [m, props] of Object.entries(months)) {
-            newData[pName][m] = props
+          for (const [m] of Object.entries(months)) {
             if (!monthsAdded.includes(m)) monthsAdded.push(m)
           }
         }
+
+        // Use functional updater so we always merge into the latest state
+        setPortfolioData(prev => {
+          const newData = { ...prev }
+          for (const [pName, months] of Object.entries(parsed)) {
+            if (!newData[pName]) newData[pName] = {}
+            else newData[pName] = { ...newData[pName] }
+            for (const [m, props] of Object.entries(months)) {
+              newData[pName][m] = props as PropertyData[]
+            }
+          }
+          return newData
+        })
       }
-      setPortfolioData(newData)
+
       monthsAdded.sort()
       if (monthsAdded.length) setSelectedMonth(monthsAdded[monthsAdded.length - 1])
       setToast(`Imported ${monthsAdded.join(', ')} successfully`)
@@ -393,7 +403,7 @@ export function FinancialsDashboard() {
       setError('Failed to parse file: ' + (e instanceof Error ? e.message : String(e)))
     }
     setLoading(false)
-  }, [portfolioData])
+  }, [])
 
   const allMonths = [...new Set(Object.values(portfolioData).flatMap(p => Object.keys(p)))].sort()
   const aggregates: Record<string, AggregatedPortfolio> = {}
