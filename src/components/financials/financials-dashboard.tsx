@@ -346,33 +346,18 @@ async function processBuffer(buf: ArrayBuffer, name: string, results: Record<str
 }
 
 async function processZipEntries(zip: JSZip, results: Record<string, Record<string, PropertyData[]>>, skipped: string[]) {
+  // JSZip stores ALL entries flat with full paths (e.g. "2026.01/file.xlsx")
+  // Get every non-directory entry regardless of subfolder depth
   const allEntries = Object.values(zip.files)
   const fileEntries = allEntries.filter(f => !f.dir && !f.name.includes('__MACOSX'))
-  const dirEntries = allEntries.filter(f => f.dir && !f.name.includes('__MACOSX'))
 
-  // Log every entry
-  console.log('[parseZip] ZIP contains', allEntries.length, 'total entries,', fileEntries.length, 'files,', dirEntries.length, 'dirs')
+  // Log every entry for debugging
+  console.log('[parseZip] ZIP contains', allEntries.length, 'total entries,', fileEntries.length, 'files')
   for (const f of allEntries) {
     console.log('[parseZip]  entry:', f.name, '| dir:', f.dir)
   }
 
-  // If zip has ONLY directory entries and no files, try reading dirs as data
-  // (Google Drive sometimes marks nested zips as directories)
-  if (fileEntries.length === 0 && dirEntries.length > 0) {
-    console.log('[parseZip] No file entries found — attempting to read directory entries as data')
-    for (const df of dirEntries) {
-      const buf = await tryReadEntryAsData(df)
-      if (buf && buf.byteLength > 0) {
-        console.log('[parseZip] Dir entry', df.name, 'has', buf.byteLength, 'bytes of data — processing as file')
-        await processBuffer(buf, df.name, results, skipped)
-      } else {
-        console.log('[parseZip] Dir entry', df.name, 'is empty (true directory)')
-      }
-    }
-    return
-  }
-
-  // Categorize file entries by extension
+  // Categorize by extension (works with full paths like "2026.01/file.xlsx")
   const spreadsheetExts = ['.xlsx', '.xls', '.xlsm', '.xlsb']
   const known = {
     spreadsheets: fileEntries.filter(f => spreadsheetExts.some(ext => f.name.toLowerCase().endsWith(ext))),
@@ -388,7 +373,7 @@ async function processZipEntries(zip: JSZip, results: Record<string, Record<stri
 
   console.log('[parseZip] Categorized:', known.spreadsheets.length, 'spreadsheets,', known.zips.length, 'zips,', known.csvs.length, 'csvs,', known.other.length, 'other/unknown')
 
-  // 1. Known spreadsheets
+  // 1. Known spreadsheets (.xlsx, .xls, etc. — at any subfolder depth)
   for (const zf of known.spreadsheets) {
     const buf = await zf.async('arraybuffer')
     const parsed = tryParseSpreadsheet(buf, zf.name)
