@@ -38,15 +38,33 @@ export function DashboardPeriodWrapper({
   useEffect(() => {
     try {
       const saved = localStorage.getItem('archway_financials_v2')
-      if (!saved) return
+      if (!saved) { console.log('[DashboardPeriod] No financials data in localStorage'); return }
       const data = JSON.parse(saved) as Record<string, Record<string, unknown>>
       const months = [...new Set(
         Object.values(data).flatMap(p => Object.keys(p))
-      )].sort()
+      )].sort().reverse() // newest first
+      console.log('[DashboardPeriod] Available months:', months)
       setAvailableMonths(months)
-    } catch {
-      // ignore
+    } catch (e) {
+      console.warn('[DashboardPeriod] Failed to read localStorage:', e)
     }
+  }, [])
+
+  // Also listen for storage changes (e.g. import in another tab or same-page updates)
+  useEffect(() => {
+    const handler = () => {
+      try {
+        const saved = localStorage.getItem('archway_financials_v2')
+        if (!saved) return
+        const data = JSON.parse(saved) as Record<string, Record<string, unknown>>
+        const months = [...new Set(
+          Object.values(data).flatMap(p => Object.keys(p))
+        )].sort().reverse()
+        setAvailableMonths(months)
+      } catch { /* ignore */ }
+    }
+    window.addEventListener('storage', handler)
+    return () => window.removeEventListener('storage', handler)
   }, [])
 
   const subtitleText = selectedPeriod === 'MTD'
@@ -62,19 +80,17 @@ export function DashboardPeriodWrapper({
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-sm text-gray-500 mt-0.5">{subtitleText}</p>
         </div>
-        {availableMonths.length > 0 && (
-          <select
-            value={selectedPeriod}
-            onChange={e => setSelectedPeriod(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-          >
-            <option value="MTD">Current Month</option>
-            <option value="YTD">YTD (All Months)</option>
-            {availableMonths.map(m => (
-              <option key={m} value={m}>{formatMonthLabel(m)}</option>
-            ))}
-          </select>
-        )}
+        <select
+          value={selectedPeriod}
+          onChange={e => setSelectedPeriod(e.target.value)}
+          className="relative z-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white cursor-pointer shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+        >
+          <option value="MTD">Current Month</option>
+          <option value="YTD">YTD (All Months)</option>
+          {availableMonths.map(m => (
+            <option key={m} value={m}>{formatMonthLabel(m)}</option>
+          ))}
+        </select>
       </div>
 
       <KpiCards
