@@ -165,21 +165,36 @@ function parseSheet(ws: XLSX.WorkSheet): ParsedSheet {
   return { portfolio, month, properties: props }
 }
 
-async function parseZip(file: File): Promise<Record<string, Record<string, PropertyData[]>>> {
-  const zip = await JSZip.loadAsync(file)
-  const results: Record<string, Record<string, PropertyData[]>> = {}
-  const xlsxFiles = Object.values(zip.files).filter(f => f.name.endsWith('.xlsx') && !f.name.startsWith('__MACOSX'))
+async function processZipEntries(zip: JSZip, results: Record<string, Record<string, PropertyData[]>>) {
+  const entries = Object.values(zip.files).filter(f => !f.dir && !f.name.includes('__MACOSX'))
+  const xlsxFiles = entries.filter(f => f.name.toLowerCase().endsWith('.xlsx'))
+  const nestedZips = entries.filter(f => f.name.toLowerCase().endsWith('.zip'))
+
   for (const zf of xlsxFiles) {
     const buf = await zf.async('arraybuffer')
     const wb = XLSX.read(buf, { type: 'array', cellDates: true })
     const ws = wb.Sheets[wb.SheetNames[0]]
     const parsed = parseSheet(ws)
-    console.log('[parseZip] file:', zf.name, '| result:', parsed)
+    console.log('[parseZip] file:', zf.name, '| portfolio:', parsed.portfolio, '| month:', parsed.month, '| props:', parsed.properties.length)
     if (parsed.portfolio && parsed.month) {
       if (!results[parsed.portfolio]) results[parsed.portfolio] = {}
       results[parsed.portfolio][parsed.month] = parsed.properties
     }
   }
+
+  // Handle nested zips (e.g., Google Drive multi-part downloads)
+  for (const zf of nestedZips) {
+    console.log('[parseZip] found nested zip:', zf.name)
+    const buf = await zf.async('arraybuffer')
+    const innerZip = await JSZip.loadAsync(buf)
+    await processZipEntries(innerZip, results)
+  }
+}
+
+async function parseZip(file: File): Promise<Record<string, Record<string, PropertyData[]>>> {
+  const zip = await JSZip.loadAsync(file)
+  const results: Record<string, Record<string, PropertyData[]>> = {}
+  await processZipEntries(zip, results)
   return results
 }
 
@@ -393,7 +408,10 @@ export function FinancialsDashboard() {
     try {
       const monthsAdded: string[] = []
       for (const file of files) {
-        const ext = file.name.split('.').pop()?.toLowerCase()
+        // Use regex to find the real extension — handles filenames with multiple dots
+        // e.g. "2026.01-20260306T163756Z-3-001.zip" → "zip"
+        const extMatch = file.name.match(/\.(zip|xlsx)$/i)
+        const ext = extMatch ? extMatch[1].toLowerCase() : file.name.split('.').pop()?.toLowerCase()
         let parsed: Record<string, Record<string, PropertyData[]>> = {}
         if (ext === 'zip') {
           parsed = await parseZip(file)
@@ -403,6 +421,15 @@ export function FinancialsDashboard() {
           const ws = wb.Sheets[wb.SheetNames[0]]
           const r = parseSheet(ws)
           if (r.portfolio && r.month) parsed[r.portfolio] = { [r.month]: r.properties }
+        } else {
+          // Fallback: detect file type by content (zip magic bytes: PK\x03\x04)
+          const buf = await file.arrayBuffer()
+          const header = new Uint8Array(buf.slice(0, 4))
+          if (header[0] === 0x50 && header[1] === 0x4B) {
+            console.log('[import] Detected zip by magic bytes for file:', file.name)
+            const blob = new File([buf], file.name + '.zip', { type: 'application/zip' })
+            parsed = await parseZip(blob)
+          }
         }
         for (const [pName, months] of Object.entries(parsed)) {
           for (const [m] of Object.entries(months)) {

@@ -23,7 +23,26 @@
       "Bash(curl:*)",
       "Bash(npx next:*)",
       "Bash(do:*)",
-      "Bash(do grep:*)"
+      "Bash(do grep:*)",
+      "Bash(timeout:*)",
+      "Bash(npx vercel:*)",
+      "Bash(where gh:*)",
+      "Bash(npm create:*)",
+      "WebSearch",
+      "WebFetch(domain:maps6.stlouis-mo.gov)",
+      "WebFetch(domain:stlgis.stlouis-mo.gov)",
+      "WebFetch(domain:www.stlouis-mo.gov)",
+      "WebFetch(domain:support.regrid.com)",
+      "WebFetch(domain:rdx.stldata.org)",
+      "WebFetch(domain:gavinr.com)",
+      "WebFetch(domain:geoportal.stlouis-mo.gov)",
+      "WebFetch(domain:dynamic.stlouis-mo.gov)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:libguides.wustl.edu)",
+      "WebFetch(domain:service.stlouis-mo.gov)",
+      "WebFetch(domain:developers.rentcast.io)",
+      "WebFetch(domain:api.rentcast.io)",
+      "Bash(unzip:*)"
     ]
   }
 }
