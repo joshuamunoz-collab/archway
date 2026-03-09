@@ -3,7 +3,7 @@ export const metadata = { title: 'Dashboard — Archway' }
 
 import { AppShell } from '@/components/shared/app-shell'
 import { prisma } from '@/lib/prisma'
-import { KpiCards } from '@/components/dashboard/kpi-cards'
+import { DashboardPeriodWrapper } from '@/components/dashboard/dashboard-period-wrapper'
 import { AlertPanels } from '@/components/dashboard/alert-panels'
 import { PortfolioCharts } from '@/components/dashboard/portfolio-charts'
 import { PropertyTable } from '@/components/property/property-table'
@@ -217,16 +217,8 @@ export default async function DashboardPage() {
   return (
     <AppShell>
       <div className="px-8 py-6 space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            Portfolio overview for {now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-          </p>
-        </div>
-
-        {/* KPI Cards */}
-        <KpiCards
+        {/* Header + Period Filter + KPI Cards */}
+        <DashboardPeriodWrapper
           statusCounts={statusCounts}
           mtdIncome={mtdIncome}
           expectedMonthlyIncome={expectedIncome}

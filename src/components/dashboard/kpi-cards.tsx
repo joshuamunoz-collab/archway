@@ -21,6 +21,7 @@ interface KpiCardsProps {
   expectedMonthlyIncome: number
   mtdExpenses: number
   lastMonthExpenses: number
+  selectedPeriod?: string // 'MTD' | 'YTD' | 'YYYY-MM'
 }
 
 export const KpiCards = memo(function KpiCards({
@@ -29,6 +30,7 @@ export const KpiCards = memo(function KpiCards({
   expectedMonthlyIncome: serverExpected,
   mtdExpenses: serverMtdExpenses,
   lastMonthExpenses,
+  selectedPeriod = 'MTD',
 }: KpiCardsProps) {
   const [financialSummary, setFinancialSummary] = useState({ income: 0, expenses: 0, noi: 0 })
 
@@ -41,29 +43,46 @@ export const KpiCards = memo(function KpiCards({
       const allMonths = [...new Set(
         Object.values(data).flatMap((p: Record<string, unknown>) => Object.keys(p))
       )].sort()
-      const latestMonth = allMonths[allMonths.length - 1]
-      if (!latestMonth) return
+
+      // Determine which months to aggregate
+      let monthsToSum: string[]
+      if (selectedPeriod === 'YTD') {
+        monthsToSum = allMonths
+      } else if (selectedPeriod === 'MTD') {
+        const latestMonth = allMonths[allMonths.length - 1]
+        monthsToSum = latestMonth ? [latestMonth] : []
+      } else {
+        // Specific month like '2025-01'
+        monthsToSum = allMonths.includes(selectedPeriod) ? [selectedPeriod] : []
+      }
+
+      if (monthsToSum.length === 0) return
       let income = 0, expenses = 0
       for (const portfolio of Object.values(data)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const monthData = (portfolio as any)[latestMonth]
-        if (!monthData) continue
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        for (const prop of monthData as any[]) {
-          income += prop.rent || 0
-          expenses += (prop.maintenance || 0) + (prop.pm_fee || 0)
+        for (const m of monthsToSum) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const monthData = (portfolio as any)[m]
+          if (!monthData) continue
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          for (const prop of monthData as any[]) {
+            income += prop.rent || 0
+            expenses += (prop.maintenance || 0) + (prop.pm_fee || 0)
+          }
         }
       }
       setFinancialSummary({ income, expenses, noi: income - expenses })
     } catch (e) {
       console.warn('Dashboard financial load failed', e)
     }
-  }, [])
+  }, [selectedPeriod])
 
   // Use localStorage data when server data is $0
-  const mtdIncome = serverMtdIncome > 0 ? serverMtdIncome : financialSummary.income
+  const useLocalStorage = selectedPeriod !== 'MTD'
+  const mtdIncome = useLocalStorage ? financialSummary.income : (serverMtdIncome > 0 ? serverMtdIncome : financialSummary.income)
   const expectedMonthlyIncome = serverExpected > 0 ? serverExpected : financialSummary.income
-  const mtdExpenses = serverMtdExpenses > 0 ? serverMtdExpenses : financialSummary.expenses
+  const mtdExpenses = useLocalStorage ? financialSummary.expenses : (serverMtdExpenses > 0 ? serverMtdExpenses : financialSummary.expenses)
+
+  const periodLabel = selectedPeriod === 'YTD' ? 'YTD' : 'MTD'
 
   const incomeProgress = expectedMonthlyIncome > 0
     ? Math.min(100, Math.round((mtdIncome / expectedMonthlyIncome) * 100))
@@ -109,7 +128,7 @@ export const KpiCards = memo(function KpiCards({
       {/* MTD Income */}
       <Card className="shadow-sm hover:shadow-md transition-shadow">
         <CardContent className="pt-5 pb-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">MTD Income</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{periodLabel} Income</p>
           <p className="text-2xl font-bold text-foreground tabular-nums">{formatCurrency(mtdIncome)}</p>
           <p className="text-xs text-muted-foreground mb-3">
             {mtdIncome > 0
@@ -124,7 +143,7 @@ export const KpiCards = memo(function KpiCards({
       {/* MTD Expenses */}
       <Card className="shadow-sm hover:shadow-md transition-shadow">
         <CardContent className="pt-5 pb-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">MTD Expenses</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{periodLabel} Expenses</p>
           <p className="text-2xl font-bold text-foreground tabular-nums">{formatCurrency(mtdExpenses)}</p>
           {expenseDelta !== null && (
             <p className={cn(
