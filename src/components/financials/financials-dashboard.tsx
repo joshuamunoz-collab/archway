@@ -50,6 +50,31 @@ type PortfolioData = Record<string, Record<string, PropertyData[]>>
 
 /* ── Parsing helpers ── */
 
+// Search every cell in a row for a value (handles column shifts between years)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function findCellByLabel(rows: any[][], label: string): { rowIdx: number; colIdx: number } | null {
+  for (let r = 0; r < rows.length; r++) {
+    for (let c = 0; c < (rows[r]?.length ?? 0); c++) {
+      if (rows[r][c] !== null && String(rows[r][c]).trim() === label) {
+        return { rowIdx: r, colIdx: c }
+      }
+    }
+  }
+  return null
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function findCellByPattern(rows: any[][], pattern: RegExp): { rowIdx: number; colIdx: number } | null {
+  for (let r = 0; r < rows.length; r++) {
+    for (let c = 0; c < (rows[r]?.length ?? 0); c++) {
+      if (rows[r][c] !== null && pattern.test(String(rows[r][c]).trim())) {
+        return { rowIdx: r, colIdx: c }
+      }
+    }
+  }
+  return null
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function parseSheet(ws: XLSX.WorkSheet): ParsedSheet {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -59,11 +84,84 @@ function parseSheet(ws: XLSX.WorkSheet): ParsedSheet {
     if (r.some((v: unknown) => v !== null)) rows.push(r)
   })
 
+  console.log('[parseSheet] Total non-empty rows:', rows.length)
+  // Log first 5 rows for debugging layout
+  for (let i = 0; i < Math.min(5, rows.length); i++) {
+    console.log(`[parseSheet] Row ${i}:`, JSON.stringify(rows[i]?.slice(0, 12)))
+  }
+
   let portfolio: string | null = null
   let month: string | null = null
   const properties: Record<string, { rent: number; pm_fee: number; tenants: string[]; payee: string[] }> = {}
   const maintenance: Record<string, MaintenanceItem[]> = {}
   let inDetails = false
+
+  // Column offsets — detected dynamically, default to known 2025 layout
+  let colPortfolioValue = 2
+  let colMonthValue = 2
+  let colAddr = 4
+  let colPayee = 5
+  let colTenant = 6
+  let colRent = 9
+  let colPM = 10
+  let colMaintAddr = 16
+  let colMaintDate = 18
+  let colMaintDesc = 19
+  let colMaintAmt = 20
+
+  // Auto-detect column layout by finding key labels
+  const portfolioCell = findCellByLabel(rows, 'Portfolio')
+  if (portfolioCell) {
+    colPortfolioValue = portfolioCell.colIdx + 1
+    portfolio = rows[portfolioCell.rowIdx][colPortfolioValue]
+      ? String(rows[portfolioCell.rowIdx][colPortfolioValue]).trim()
+      : null
+    console.log('[parseSheet] Found "Portfolio" at col', portfolioCell.colIdx, '→ value:', portfolio)
+  }
+
+  const monthCell = findCellByLabel(rows, 'Month Billed:') || findCellByPattern(rows, /^Month\s*Billed/i)
+  if (monthCell) {
+    colMonthValue = monthCell.colIdx + 1
+    const raw = rows[monthCell.rowIdx][colMonthValue]
+    console.log('[parseSheet] Found "Month Billed" at col', monthCell.colIdx, '→ raw value:', raw, '(type:', typeof raw, ')')
+    if (raw instanceof Date) {
+      month = `${raw.getFullYear()}-${String(raw.getMonth() + 1).padStart(2, '0')}`
+    } else if (typeof raw === 'number') {
+      const d = XLSX.SSF.parse_date_code(raw)
+      month = `${d.y}-${String(d.m).padStart(2, '0')}`
+    } else if (raw) {
+      const s = String(raw).trim()
+      // Try to parse various date formats: "January 2026", "2026-01", "01/2026", etc.
+      const isoMatch = s.match(/^(\d{4})-(\d{2})$/)
+      if (isoMatch) {
+        month = s
+      } else {
+        const parsed = new Date(s + ' 1') // "January 2026 1" → parseable
+        if (!isNaN(parsed.getTime())) {
+          month = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}`
+        } else {
+          month = s
+        }
+      }
+    }
+    console.log('[parseSheet] Parsed month:', month)
+  }
+
+  const paymentIdCell = findCellByLabel(rows, 'Payment ID')
+  if (paymentIdCell) {
+    console.log('[parseSheet] Found "Payment ID" at row', paymentIdCell.rowIdx, 'col', paymentIdCell.colIdx)
+    // Detect column layout from header row
+    const headerRow = rows[paymentIdCell.rowIdx]
+    for (let c = 0; c < (headerRow?.length ?? 0); c++) {
+      const val = headerRow[c] ? String(headerRow[c]).trim().toLowerCase() : ''
+      if (val === 'address' || val === 'property address' || val === 'property') colAddr = c
+      if (val === 'payee' || val === 'pay to') colPayee = c
+      if (val === 'tenant' || val === 'tenant name') colTenant = c
+      if (val === 'rent' || val === 'amount' || val === 'rent amount') colRent = c
+      if (val === 'pm fee' || val === 'management fee' || val === 'pm') colPM = c
+    }
+    console.log('[parseSheet] Detected columns — addr:', colAddr, 'tenant:', colTenant, 'rent:', colRent, 'pm:', colPM)
+  }
 
   const toDateStr = (v: unknown): string => {
     if (!v) return ''
@@ -77,10 +175,10 @@ function parseSheet(ws: XLSX.WorkSheet): ParsedSheet {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function gotoMaint(row: any[]) {
-    const mAddr = row[16] ? String(row[16]).trim() : null
-    const mDate = row[18]
-    const mDesc = row[19] ? String(row[19]) : ''
-    const mAmt = typeof row[20] === 'number' ? row[20] : null
+    const mAddr = row[colMaintAddr] ? String(row[colMaintAddr]).trim() : null
+    const mDate = row[colMaintDate]
+    const mDesc = row[colMaintDesc] ? String(row[colMaintDesc]) : ''
+    const mAmt = typeof row[colMaintAmt] === 'number' ? row[colMaintAmt] : null
     if (
       mAddr &&
       mAmt !== null &&
@@ -97,26 +195,32 @@ function parseSheet(ws: XLSX.WorkSheet): ParsedSheet {
     }
   }
 
+  let detailRowCount = 0
   for (const row of rows) {
-    if (row[1] === 'Portfolio') {
+    // Skip rows already handled by auto-detect above
+    if (!portfolioCell && row[1] === 'Portfolio') {
       portfolio = row[2] ? String(row[2]).trim() : null
       continue
     }
-    if (row[1] === 'Month Billed:') {
+    if (!monthCell && (row[1] === 'Month Billed:' || (typeof row[1] === 'string' && /^Month\s*Billed/i.test(row[1])))) {
       const raw = row[2]
       if (raw instanceof Date) {
         month = `${raw.getFullYear()}-${String(raw.getMonth() + 1).padStart(2, '0')}`
       } else if (typeof raw === 'number') {
         const d = XLSX.SSF.parse_date_code(raw)
         month = `${d.y}-${String(d.m).padStart(2, '0')}`
-      } else {
+      } else if (raw) {
         month = String(raw).trim()
       }
       continue
     }
-    if (row[1] === 'Payment ID') { inDetails = true; continue }
+    if (row[1] === 'Payment ID' || (paymentIdCell && rows.indexOf(row) === paymentIdCell.rowIdx)) {
+      inDetails = true
+      continue
+    }
 
     if (inDetails) {
+      detailRowCount++
       const pid = row[1]
       if (!pid) {
         gotoMaint(row)
@@ -124,11 +228,11 @@ function parseSheet(ws: XLSX.WorkSheet): ParsedSheet {
         gotoMaint(row)
         continue
       } else {
-        const addr = row[4] ? String(row[4]).trim() : null
-        const tenant = row[6] ? String(row[6]) : ''
-        const payee = row[5] ? String(row[5]) : ''
-        const rent = typeof row[9] === 'number' ? row[9] : 0
-        const pm = typeof row[10] === 'number' ? row[10] : 0
+        const addr = row[colAddr] ? String(row[colAddr]).trim() : null
+        const tenant = row[colTenant] ? String(row[colTenant]) : ''
+        const payee = row[colPayee] ? String(row[colPayee]) : ''
+        const rent = typeof row[colRent] === 'number' ? row[colRent] : 0
+        const pm = typeof row[colPM] === 'number' ? row[colPM] : 0
         if (addr && !addr.match(/^\d{4}-\d{2}$/) && addr !== 'None') {
           if (!properties[addr]) properties[addr] = { rent: 0, pm_fee: 0, tenants: [], payee: [] }
           properties[addr].rent += rent
@@ -142,6 +246,8 @@ function parseSheet(ws: XLSX.WorkSheet): ParsedSheet {
       gotoMaint(row)
     }
   }
+
+  console.log('[parseSheet] Detail rows processed:', detailRowCount)
 
   const allAddrs = new Set([...Object.keys(properties), ...Object.keys(maintenance)])
   const props: PropertyData[] = []
@@ -161,41 +267,68 @@ function parseSheet(ws: XLSX.WorkSheet): ParsedSheet {
       noi: Math.round((inf.rent - mTotal - inf.pm_fee) * 100) / 100,
     })
   }
-  console.log('[parseSheet] portfolio:', portfolio, '| month:', month, '| props count:', props.length)
+  console.log('[parseSheet] RESULT → portfolio:', portfolio, '| month:', month, '| props count:', props.length)
+  if (!portfolio) console.warn('[parseSheet] ⚠ Portfolio is NULL — "Portfolio" label not found in any cell')
+  if (!month) console.warn('[parseSheet] ⚠ Month is NULL — "Month Billed:" label not found in any cell')
   return { portfolio, month, properties: props }
 }
 
-async function processZipEntries(zip: JSZip, results: Record<string, Record<string, PropertyData[]>>) {
-  const entries = Object.values(zip.files).filter(f => !f.dir && !f.name.includes('__MACOSX'))
+async function processZipEntries(zip: JSZip, results: Record<string, Record<string, PropertyData[]>>, skipped: string[]) {
+  const allEntries = Object.values(zip.files)
+  const entries = allEntries.filter(f => !f.dir && !f.name.includes('__MACOSX'))
   const xlsxFiles = entries.filter(f => f.name.toLowerCase().endsWith('.xlsx'))
   const nestedZips = entries.filter(f => f.name.toLowerCase().endsWith('.zip'))
 
+  console.log('[parseZip] ZIP contents:', allEntries.length, 'total entries,', xlsxFiles.length, 'xlsx,', nestedZips.length, 'nested zips')
+  console.log('[parseZip] All entry names:', allEntries.map(f => f.name))
+
   for (const zf of xlsxFiles) {
-    const buf = await zf.async('arraybuffer')
-    const wb = XLSX.read(buf, { type: 'array', cellDates: true })
-    const ws = wb.Sheets[wb.SheetNames[0]]
-    const parsed = parseSheet(ws)
-    console.log('[parseZip] file:', zf.name, '| portfolio:', parsed.portfolio, '| month:', parsed.month, '| props:', parsed.properties.length)
-    if (parsed.portfolio && parsed.month) {
-      if (!results[parsed.portfolio]) results[parsed.portfolio] = {}
-      results[parsed.portfolio][parsed.month] = parsed.properties
+    try {
+      const buf = await zf.async('arraybuffer')
+      const wb = XLSX.read(buf, { type: 'array', cellDates: true })
+      console.log('[parseZip] Opened:', zf.name, '| sheets:', wb.SheetNames)
+      const ws = wb.Sheets[wb.SheetNames[0]]
+      const parsed = parseSheet(ws)
+      if (parsed.portfolio && parsed.month) {
+        if (!results[parsed.portfolio]) results[parsed.portfolio] = {}
+        results[parsed.portfolio][parsed.month] = parsed.properties
+      } else {
+        const reason = !parsed.portfolio && !parsed.month ? 'no portfolio & no month found'
+          : !parsed.portfolio ? 'no portfolio found' : 'no month found'
+        skipped.push(`${zf.name} (${reason})`)
+        console.warn('[parseZip] SKIPPED:', zf.name, '—', reason)
+      }
+    } catch (e) {
+      skipped.push(`${zf.name} (parse error: ${e instanceof Error ? e.message : String(e)})`)
+      console.error('[parseZip] ERROR parsing:', zf.name, e)
     }
   }
 
   // Handle nested zips (e.g., Google Drive multi-part downloads)
   for (const zf of nestedZips) {
-    console.log('[parseZip] found nested zip:', zf.name)
-    const buf = await zf.async('arraybuffer')
-    const innerZip = await JSZip.loadAsync(buf)
-    await processZipEntries(innerZip, results)
+    console.log('[parseZip] Extracting nested zip:', zf.name)
+    try {
+      const buf = await zf.async('arraybuffer')
+      const innerZip = await JSZip.loadAsync(buf)
+      await processZipEntries(innerZip, results, skipped)
+    } catch (e) {
+      skipped.push(`${zf.name} (nested zip error: ${e instanceof Error ? e.message : String(e)})`)
+      console.error('[parseZip] ERROR opening nested zip:', zf.name, e)
+    }
   }
 }
 
-async function parseZip(file: File): Promise<Record<string, Record<string, PropertyData[]>>> {
+interface ParseZipResult {
+  data: Record<string, Record<string, PropertyData[]>>
+  skipped: string[]
+}
+
+async function parseZip(file: File): Promise<ParseZipResult> {
   const zip = await JSZip.loadAsync(file)
   const results: Record<string, Record<string, PropertyData[]>> = {}
-  await processZipEntries(zip, results)
-  return results
+  const skipped: string[] = []
+  await processZipEntries(zip, results, skipped)
+  return { data: results, skipped }
 }
 
 /* ── Formatters ── */
@@ -407,31 +540,50 @@ export function FinancialsDashboard() {
     setError(null)
     try {
       const monthsAdded: string[] = []
+      const allSkipped: string[] = []
       for (const file of files) {
+        console.log('[handleFiles] Processing file:', file.name, '| size:', file.size, '| type:', file.type)
         // Use regex to find the real extension — handles filenames with multiple dots
         // e.g. "2026.01-20260306T163756Z-3-001.zip" → "zip"
         const extMatch = file.name.match(/\.(zip|xlsx)$/i)
         const ext = extMatch ? extMatch[1].toLowerCase() : file.name.split('.').pop()?.toLowerCase()
+        console.log('[handleFiles] Detected extension:', ext)
         let parsed: Record<string, Record<string, PropertyData[]>> = {}
+        let skipped: string[] = []
         if (ext === 'zip') {
-          parsed = await parseZip(file)
+          const result = await parseZip(file)
+          parsed = result.data
+          skipped = result.skipped
         } else if (ext === 'xlsx') {
           const buf = await file.arrayBuffer()
           const wb = XLSX.read(buf, { type: 'array', cellDates: true })
           const ws = wb.Sheets[wb.SheetNames[0]]
           const r = parseSheet(ws)
-          if (r.portfolio && r.month) parsed[r.portfolio] = { [r.month]: r.properties }
+          if (r.portfolio && r.month) {
+            parsed[r.portfolio] = { [r.month]: r.properties }
+          } else {
+            skipped.push(`${file.name} (${!r.portfolio ? 'no portfolio' : 'no month'} found)`)
+          }
         } else {
           // Fallback: detect file type by content (zip magic bytes: PK\x03\x04)
           const buf = await file.arrayBuffer()
           const header = new Uint8Array(buf.slice(0, 4))
           if (header[0] === 0x50 && header[1] === 0x4B) {
-            console.log('[import] Detected zip by magic bytes for file:', file.name)
+            console.log('[handleFiles] Detected zip by magic bytes for file:', file.name)
             const blob = new File([buf], file.name + '.zip', { type: 'application/zip' })
-            parsed = await parseZip(blob)
+            const result = await parseZip(blob)
+            parsed = result.data
+            skipped = result.skipped
+          } else {
+            console.warn('[handleFiles] Unknown file type for:', file.name, '| ext:', ext)
           }
         }
-        for (const [pName, months] of Object.entries(parsed)) {
+        allSkipped.push(...skipped)
+        const portfolioCount = Object.keys(parsed).length
+        const monthCount = Object.values(parsed).reduce((s, p) => s + Object.keys(p).length, 0)
+        console.log('[handleFiles] Parsed result:', portfolioCount, 'portfolios,', monthCount, 'months,', skipped.length, 'skipped')
+
+        for (const [, months] of Object.entries(parsed)) {
           for (const [m] of Object.entries(months)) {
             if (!monthsAdded.includes(m)) monthsAdded.push(m)
           }
@@ -453,8 +605,20 @@ export function FinancialsDashboard() {
 
       monthsAdded.sort()
       if (monthsAdded.length) setSelectedMonth(monthsAdded[monthsAdded.length - 1])
-      setToast(`Imported ${monthsAdded.join(', ')} successfully`)
-      setTimeout(() => setToast(null), 3500)
+
+      // Build result message
+      let msg = monthsAdded.length
+        ? `Imported ${monthsAdded.join(', ')} successfully`
+        : 'No data found in uploaded files'
+      if (allSkipped.length > 0) {
+        msg += ` — ${allSkipped.length} file(s) skipped`
+        console.warn('[handleFiles] Skipped files:', allSkipped)
+      }
+      if (monthsAdded.length === 0 && allSkipped.length > 0) {
+        setError(`Import failed: no valid data found. Skipped files:\n${allSkipped.join('\n')}`)
+      }
+      setToast(msg)
+      setTimeout(() => setToast(null), 5000)
     } catch (e) {
       setError('Failed to parse file: ' + (e instanceof Error ? e.message : String(e)))
     }
