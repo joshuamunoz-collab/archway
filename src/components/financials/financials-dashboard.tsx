@@ -273,39 +273,75 @@ function parseSheet(ws: XLSX.WorkSheet): ParsedSheet {
   return { portfolio, month, properties: props }
 }
 
+function tryParseSpreadsheet(buf: ArrayBuffer, fileName: string): ParsedSheet | null {
+  try {
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true })
+    console.log('[parseZip] SheetJS opened:', fileName, '| sheets:', wb.SheetNames)
+    const ws = wb.Sheets[wb.SheetNames[0]]
+    return parseSheet(ws)
+  } catch (e) {
+    console.warn('[parseZip] SheetJS could not open:', fileName, '|', e instanceof Error ? e.message : String(e))
+    return null
+  }
+}
+
+function handleParsedResult(parsed: ParsedSheet, fileName: string, results: Record<string, Record<string, PropertyData[]>>, skipped: string[]) {
+  if (parsed.portfolio && parsed.month) {
+    if (!results[parsed.portfolio]) results[parsed.portfolio] = {}
+    results[parsed.portfolio][parsed.month] = parsed.properties
+    console.log('[parseZip] ✓ OK:', fileName, '→', parsed.portfolio, parsed.month, '|', parsed.properties.length, 'properties')
+  } else {
+    const reason = !parsed.portfolio && !parsed.month ? 'no portfolio & no month found'
+      : !parsed.portfolio ? 'no portfolio found' : 'no month found'
+    skipped.push(`${fileName} (${reason})`)
+    console.warn('[parseZip] SKIPPED:', fileName, '—', reason)
+  }
+}
+
 async function processZipEntries(zip: JSZip, results: Record<string, Record<string, PropertyData[]>>, skipped: string[]) {
   const allEntries = Object.values(zip.files)
   const entries = allEntries.filter(f => !f.dir && !f.name.includes('__MACOSX'))
-  const xlsxFiles = entries.filter(f => f.name.toLowerCase().endsWith('.xlsx'))
-  const nestedZips = entries.filter(f => f.name.toLowerCase().endsWith('.zip'))
 
-  console.log('[parseZip] ZIP contents:', allEntries.length, 'total entries,', xlsxFiles.length, 'xlsx,', nestedZips.length, 'nested zips')
-  console.log('[parseZip] All entry names:', allEntries.map(f => f.name))
-
-  for (const zf of xlsxFiles) {
-    try {
-      const buf = await zf.async('arraybuffer')
-      const wb = XLSX.read(buf, { type: 'array', cellDates: true })
-      console.log('[parseZip] Opened:', zf.name, '| sheets:', wb.SheetNames)
-      const ws = wb.Sheets[wb.SheetNames[0]]
-      const parsed = parseSheet(ws)
-      if (parsed.portfolio && parsed.month) {
-        if (!results[parsed.portfolio]) results[parsed.portfolio] = {}
-        results[parsed.portfolio][parsed.month] = parsed.properties
-      } else {
-        const reason = !parsed.portfolio && !parsed.month ? 'no portfolio & no month found'
-          : !parsed.portfolio ? 'no portfolio found' : 'no month found'
-        skipped.push(`${zf.name} (${reason})`)
-        console.warn('[parseZip] SKIPPED:', zf.name, '—', reason)
-      }
-    } catch (e) {
-      skipped.push(`${zf.name} (parse error: ${e instanceof Error ? e.message : String(e)})`)
-      console.error('[parseZip] ERROR parsing:', zf.name, e)
-    }
+  // Log every single entry with full details
+  console.log('[parseZip] ZIP contains', allEntries.length, 'total entries,', entries.length, 'non-dir/non-MACOSX')
+  for (const f of allEntries) {
+    console.log('[parseZip]  entry:', f.name, '| dir:', f.dir)
   }
 
-  // Handle nested zips (e.g., Google Drive multi-part downloads)
-  for (const zf of nestedZips) {
+  // Categorize by extension
+  const spreadsheetExts = ['.xlsx', '.xls', '.xlsm', '.xlsb']
+  const known = {
+    spreadsheets: entries.filter(f => spreadsheetExts.some(ext => f.name.toLowerCase().endsWith(ext))),
+    zips: entries.filter(f => f.name.toLowerCase().endsWith('.zip')),
+    csvs: entries.filter(f => f.name.toLowerCase().endsWith('.csv')),
+    other: entries.filter(f => {
+      const lower = f.name.toLowerCase()
+      return !spreadsheetExts.some(ext => lower.endsWith(ext))
+        && !lower.endsWith('.zip')
+        && !lower.endsWith('.csv')
+    }),
+  }
+
+  console.log('[parseZip] Categorized:', known.spreadsheets.length, 'spreadsheets,', known.zips.length, 'zips,', known.csvs.length, 'csvs,', known.other.length, 'other/unknown')
+
+  // 1. Process known spreadsheets (.xlsx, .xls, .xlsm, .xlsb)
+  for (const zf of known.spreadsheets) {
+    const buf = await zf.async('arraybuffer')
+    const parsed = tryParseSpreadsheet(buf, zf.name)
+    if (parsed) handleParsedResult(parsed, zf.name, results, skipped)
+    else skipped.push(`${zf.name} (SheetJS could not open)`)
+  }
+
+  // 2. Process CSVs — SheetJS can read CSV too
+  for (const zf of known.csvs) {
+    const buf = await zf.async('arraybuffer')
+    const parsed = tryParseSpreadsheet(buf, zf.name)
+    if (parsed) handleParsedResult(parsed, zf.name, results, skipped)
+    else skipped.push(`${zf.name} (CSV parse failed)`)
+  }
+
+  // 3. Process nested zips
+  for (const zf of known.zips) {
     console.log('[parseZip] Extracting nested zip:', zf.name)
     try {
       const buf = await zf.async('arraybuffer')
@@ -314,6 +350,51 @@ async function processZipEntries(zip: JSZip, results: Record<string, Record<stri
     } catch (e) {
       skipped.push(`${zf.name} (nested zip error: ${e instanceof Error ? e.message : String(e)})`)
       console.error('[parseZip] ERROR opening nested zip:', zf.name, e)
+    }
+  }
+
+  // 4. Process unknown files — detect by magic bytes or try SheetJS
+  for (const zf of known.other) {
+    const buf = await zf.async('arraybuffer')
+    const header = new Uint8Array(buf.slice(0, 8))
+    const hex = Array.from(header.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join(' ')
+    console.log('[parseZip] Unknown file:', zf.name, '| magic bytes:', hex, '| size:', buf.byteLength)
+
+    // PK\x03\x04 = zip/xlsx, D0 CF 11 E0 = OLE2 (.xls/.doc)
+    const isPK = header[0] === 0x50 && header[1] === 0x4B
+    const isOLE2 = header[0] === 0xD0 && header[1] === 0xCF && header[2] === 0x11 && header[3] === 0xE0
+
+    if (isPK) {
+      // Could be xlsx or nested zip — try SheetJS first, then JSZip
+      console.log('[parseZip] PK magic detected in:', zf.name, '— trying as spreadsheet then as zip')
+      const parsed = tryParseSpreadsheet(buf, zf.name)
+      if (parsed && (parsed.portfolio || parsed.month)) {
+        handleParsedResult(parsed, zf.name, results, skipped)
+      } else {
+        // Try as nested zip
+        try {
+          const innerZip = await JSZip.loadAsync(buf)
+          console.log('[parseZip] Opened as nested zip:', zf.name)
+          await processZipEntries(innerZip, results, skipped)
+        } catch {
+          skipped.push(`${zf.name} (PK file — not a valid xlsx or zip)`)
+        }
+      }
+    } else if (isOLE2) {
+      // Old Excel format (.xls)
+      console.log('[parseZip] OLE2 magic detected in:', zf.name, '— trying as .xls')
+      const parsed = tryParseSpreadsheet(buf, zf.name)
+      if (parsed) handleParsedResult(parsed, zf.name, results, skipped)
+      else skipped.push(`${zf.name} (OLE2 file — SheetJS could not open)`)
+    } else {
+      // Last resort: just try SheetJS on it
+      console.log('[parseZip] Trying SheetJS on unknown file:', zf.name)
+      const parsed = tryParseSpreadsheet(buf, zf.name)
+      if (parsed && (parsed.portfolio || parsed.month || parsed.properties.length > 0)) {
+        handleParsedResult(parsed, zf.name, results, skipped)
+      } else {
+        skipped.push(`${zf.name} (unrecognized format, magic: ${hex})`)
+      }
     }
   }
 }
