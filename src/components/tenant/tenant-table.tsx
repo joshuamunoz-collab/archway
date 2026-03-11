@@ -58,6 +58,7 @@ export function TenantTable({ tenants: initialTenants }: { tenants: TenantRow[] 
   const [editing, setEditing] = useState<TenantRow | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const syncAttempted = useRef(false)
 
   // Auto-sync: if DB has no tenants, extract from localStorage financials data and push to DB
@@ -68,9 +69,9 @@ export function TenantTable({ tenants: initialTenants }: { tenants: TenantRow[] 
     const saved = localStorage.getItem('archway_financials_v2')
     if (!saved) return
 
+    let entries: { tenantName: string; propertyAddress: string; contractRent: number }[] = []
     try {
       const data = JSON.parse(saved) as Record<string, Record<string, { tenant: string; address: string; rent: number }[]>>
-      const entries: { tenantName: string; propertyAddress: string; contractRent: number }[] = []
       const seen = new Set<string>()
       for (const months of Object.values(data)) {
         for (const props of Object.values(months)) {
@@ -88,20 +89,38 @@ export function TenantTable({ tenants: initialTenants }: { tenants: TenantRow[] 
           }
         }
       }
-      if (entries.length === 0) return
+    } catch { /* ignore parse errors */ }
 
+    // No localStorage data either — truly empty, show empty state
+    if (entries.length === 0) return
+
+    // Show skeleton while syncing
+    setSyncing(true)
+
+    const doSync = (retry: boolean) => {
       fetch('/api/import/tenants-from-cashflow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ entries }),
       }).then(res => {
         if (res.ok) return res.json()
+        throw new Error('sync failed')
       }).then(result => {
         if (result && (result.tenantsCreated > 0 || result.leasesCreated > 0)) {
           router.refresh()
         }
-      }).catch(() => {})
-    } catch { /* ignore parse errors */ }
+        setSyncing(false)
+      }).catch(() => {
+        if (retry) {
+          setTimeout(() => doSync(false), 2000)
+        } else {
+          console.warn('[TenantTable] Tenant sync failed after retry')
+          setSyncing(false)
+        }
+      })
+    }
+
+    doSync(true)
   }, [initialTenants.length, router])
 
   const filtered = useMemo(() => {
@@ -203,7 +222,36 @@ export function TenantTable({ tenants: initialTenants }: { tenants: TenantRow[] 
       </div>
 
       {/* Table */}
-      {filtered.length === 0 ? (
+      {syncing ? (
+        <div className="rounded-xl border border-gray-200/60 shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Phone / Email</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Voucher #</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Property</th>
+                <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Rent</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Lease End</th>
+                <th className="w-20" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <tr key={i}>
+                  <td className="px-4 py-3"><div className="h-4 w-28 bg-gray-200 rounded animate-pulse" /></td>
+                  <td className="px-4 py-3 hidden sm:table-cell"><div className="h-4 w-24 bg-gray-200 rounded animate-pulse" /></td>
+                  <td className="px-4 py-3 hidden md:table-cell"><div className="h-4 w-20 bg-gray-200 rounded animate-pulse" /></td>
+                  <td className="px-4 py-3"><div className="h-4 w-36 bg-gray-200 rounded animate-pulse" /></td>
+                  <td className="px-4 py-3 hidden lg:table-cell"><div className="h-4 w-16 bg-gray-200 rounded animate-pulse ml-auto" /></td>
+                  <td className="px-4 py-3 hidden lg:table-cell"><div className="h-4 w-20 bg-gray-200 rounded animate-pulse" /></td>
+                  <td className="px-4 py-3"><div className="h-4 w-12 bg-gray-200 rounded animate-pulse" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="rounded-lg border-2 border-dashed p-12 text-center">
           <Users className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">

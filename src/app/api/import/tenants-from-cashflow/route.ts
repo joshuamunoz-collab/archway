@@ -85,32 +85,47 @@ export async function POST(request: Request) {
     )
     if (!property) { skipped++; continue }
 
-    // Find or create tenant
+    // Upsert tenant (idempotent — safe for repeated calls)
     const tk = tenantKey(firstName, lastName)
     let tenantId = tenantMap.get(tk)
     if (!tenantId) {
-      const tenant = await prisma.tenant.create({
-        data: { firstName, lastName },
+      // Check DB again in case another request created it between our initial load and now
+      const existing = await prisma.tenant.findFirst({
+        where: { firstName, lastName },
+        select: { id: true },
       })
-      tenantId = tenant.id
+      if (existing) {
+        tenantId = existing.id
+      } else {
+        const tenant = await prisma.tenant.create({
+          data: { firstName, lastName },
+        })
+        tenantId = tenant.id
+        tenantsCreated++
+      }
       tenantMap.set(tk, tenantId)
-      tenantsCreated++
     }
 
-    // Create active lease if none exists for this property+tenant
+    // Upsert active lease (idempotent — skip if one already exists for this property+tenant)
     const lk = `${property.id}|${tenantId}`
     if (!leaseSet.has(lk)) {
-      await prisma.lease.create({
-        data: {
-          propertyId: property.id,
-          tenantId,
-          startDate: new Date(),
-          contractRent: contractRent ?? 0,
-          status: 'active',
-        },
+      const existingLease = await prisma.lease.findFirst({
+        where: { propertyId: property.id, tenantId, status: 'active' },
+        select: { id: true },
       })
+      if (!existingLease) {
+        await prisma.lease.create({
+          data: {
+            propertyId: property.id,
+            tenantId,
+            startDate: new Date(),
+            contractRent: contractRent ?? 0,
+            status: 'active',
+          },
+        })
+        leasesCreated++
+      }
       leaseSet.add(lk)
-      leasesCreated++
     }
   }
 
