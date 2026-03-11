@@ -58,6 +58,7 @@ export function TenantTable({ tenants: initialTenants }: { tenants: TenantRow[] 
   const [editing, setEditing] = useState<TenantRow | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
+  const [syncing, setSyncing] = useState(false)
 
   const filtered = useMemo(() => {
     if (!search.trim()) return initialTenants
@@ -117,6 +118,47 @@ export function TenantTable({ tenants: initialTenants }: { tenants: TenantRow[] 
     }
   }
 
+  async function syncFromFinancials() {
+    try {
+      const saved = localStorage.getItem('archway_financials_v2')
+      if (!saved) { toast.error('No financial data found. Import cashflow statements first on the Financials page.'); return }
+      const data = JSON.parse(saved) as Record<string, Record<string, { tenant: string; address: string; rent: number }[]>>
+      const entries: { tenantName: string; propertyAddress: string; contractRent: number }[] = []
+      const seen = new Set<string>()
+      for (const months of Object.values(data)) {
+        for (const props of Object.values(months)) {
+          for (const prop of props) {
+            if (prop.tenant && prop.tenant !== '—') {
+              for (const name of prop.tenant.split(',')) {
+                const trimmed = name.trim()
+                const key = `${trimmed.toLowerCase()}|${prop.address.toLowerCase()}`
+                if (trimmed && !seen.has(key)) {
+                  seen.add(key)
+                  entries.push({ tenantName: trimmed, propertyAddress: prop.address, contractRent: prop.rent || 0 })
+                }
+              }
+            }
+          }
+        }
+      }
+      if (entries.length === 0) { toast.error('No tenant data found in imported financials'); return }
+      setSyncing(true)
+      const res = await fetch('/api/import/tenants-from-cashflow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entries }),
+      })
+      if (!res.ok) throw new Error('Sync failed')
+      const result = await res.json()
+      toast.success(`Synced ${result.tenantsCreated} tenants, ${result.leasesCreated} leases`)
+      router.refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to sync')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   async function deleteTenant(tenant: TenantRow) {
     if (tenant.activeLease) {
       toast.error('Cannot delete a tenant with an active lease')
@@ -164,6 +206,17 @@ export function TenantTable({ tenants: initialTenants }: { tenants: TenantRow[] 
           <p className="text-sm text-muted-foreground">
             {search ? 'No tenants match your search.' : 'No tenants yet. Add your first tenant.'}
           </p>
+          {!search && initialTenants.length === 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-4 gap-1.5"
+              onClick={syncFromFinancials}
+              disabled={syncing}
+            >
+              {syncing ? 'Syncing…' : 'Sync from Financials Data'}
+            </Button>
+          )}
         </div>
       ) : (
         <div className="rounded-xl border border-gray-200/60 shadow-sm overflow-hidden">

@@ -626,6 +626,43 @@ export function FinancialsDashboard() {
     }
   }, [portfolioData])
 
+  // One-time sync: push any tenant data already in localStorage to the DB
+  useEffect(() => {
+    const synced = sessionStorage.getItem('archway_tenants_synced')
+    if (synced || Object.keys(portfolioData).length === 0) return
+
+    const entries: { tenantName: string; propertyAddress: string; contractRent: number }[] = []
+    const seen = new Set<string>()
+    for (const months of Object.values(portfolioData)) {
+      const sortedMonths = Object.keys(months).sort()
+      for (const m of sortedMonths) {
+        for (const prop of months[m]) {
+          if (prop.tenant && prop.tenant !== '—') {
+            for (const name of prop.tenant.split(',')) {
+              const trimmed = name.trim()
+              const key = `${trimmed.toLowerCase()}|${prop.address.toLowerCase()}`
+              if (trimmed && !seen.has(key)) {
+                seen.add(key)
+                entries.push({ tenantName: trimmed, propertyAddress: prop.address, contractRent: prop.rent })
+              }
+            }
+          }
+        }
+      }
+    }
+    if (entries.length > 0) {
+      fetch('/api/import/tenants-from-cashflow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entries }),
+      }).then(res => {
+        if (res.ok) sessionStorage.setItem('archway_tenants_synced', '1')
+      }).catch(() => {})
+    } else {
+      sessionStorage.setItem('archway_tenants_synced', '1')
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleFiles = useCallback(async (files: File[]) => {
     setLoading(true)
     setError(null)
@@ -696,6 +733,53 @@ export function FinancialsDashboard() {
 
       monthsAdded.sort()
       if (monthsAdded.length) setSelectedMonth(monthsAdded[monthsAdded.length - 1])
+
+      // Sync tenant records to DB from parsed cashflow data
+      if (monthsAdded.length > 0) {
+        try {
+          // Collect all tenant-address pairs from newly imported data, using most recent month's rent
+          const tenantEntries: { tenantName: string; propertyAddress: string; contractRent: number }[] = []
+          const tenantSeen = new Set<string>()
+          // Read from the latest state via functional accessor pattern
+          setPortfolioData(currentData => {
+            for (const months of Object.values(currentData)) {
+              // Use the latest month's data for each property (most accurate rent)
+              const sortedMonths = Object.keys(months).sort()
+              for (const m of sortedMonths) {
+                for (const prop of months[m]) {
+                  if (prop.tenant && prop.tenant !== '—') {
+                    // A property may have multiple tenants comma-separated
+                    for (const name of prop.tenant.split(',')) {
+                      const trimmed = name.trim()
+                      const key = `${trimmed.toLowerCase()}|${prop.address.toLowerCase()}`
+                      if (trimmed && !tenantSeen.has(key)) {
+                        tenantSeen.add(key)
+                        tenantEntries.push({ tenantName: trimmed, propertyAddress: prop.address, contractRent: prop.rent })
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            return currentData // return unchanged
+          })
+          if (tenantEntries.length > 0) {
+            const syncRes = await fetch('/api/import/tenants-from-cashflow', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ entries: tenantEntries }),
+            })
+            if (syncRes.ok) {
+              const syncData = await syncRes.json()
+              if (syncData.tenantsCreated > 0) {
+                console.log(`[handleFiles] Synced ${syncData.tenantsCreated} tenants, ${syncData.leasesCreated} leases to DB`)
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[handleFiles] Tenant sync failed (non-blocking):', e)
+        }
+      }
 
       // Build result message
       let msg = monthsAdded.length
