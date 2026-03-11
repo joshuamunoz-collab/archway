@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Plus, Search, Pencil, Trash2, Users } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, Users, Building2 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,7 +23,12 @@ interface ActiveLease {
   startDate: string
   endDate: string | null
   contractRent: number
-  property: { id: string; addressLine1: string; addressLine2: string | null }
+  property: {
+    id: string
+    addressLine1: string
+    addressLine2: string | null
+    entity: { id: string; name: string } | null
+  }
 }
 
 interface TenantRow {
@@ -40,6 +45,12 @@ interface TenantRow {
   activeLease: ActiveLease | null
 }
 
+interface EntityGroup {
+  entityName: string
+  entityId: string | null
+  tenants: TenantRow[]
+}
+
 const EMPTY_FORM = {
   firstName: '',
   lastName: '',
@@ -49,6 +60,32 @@ const EMPTY_FORM = {
   phaCaseworker: '',
   phaPhone: '',
   notes: '',
+}
+
+function groupByEntity(tenants: TenantRow[]): EntityGroup[] {
+  const map = new Map<string, EntityGroup>()
+
+  for (const tenant of tenants) {
+    const entityName = tenant.activeLease?.property.entity?.name ?? 'Unassigned'
+    const entityId = tenant.activeLease?.property.entity?.id ?? null
+
+    let group = map.get(entityName)
+    if (!group) {
+      group = { entityName, entityId, tenants: [] }
+      map.set(entityName, group)
+    }
+    group.tenants.push(tenant)
+  }
+
+  // Sort: named entities first (alphabetically), "Unassigned" last
+  const groups = Array.from(map.values())
+  groups.sort((a, b) => {
+    if (a.entityName === 'Unassigned') return 1
+    if (b.entityName === 'Unassigned') return -1
+    return a.entityName.localeCompare(b.entityName)
+  })
+
+  return groups
 }
 
 export function TenantTable({ tenants: initialTenants }: { tenants: TenantRow[] }) {
@@ -91,10 +128,8 @@ export function TenantTable({ tenants: initialTenants }: { tenants: TenantRow[] 
       }
     } catch { /* ignore parse errors */ }
 
-    // No localStorage data either — truly empty, show empty state
     if (entries.length === 0) return
 
-    // Show skeleton while syncing
     setSyncing(true)
 
     const doSync = (retry: boolean) => {
@@ -131,9 +166,12 @@ export function TenantTable({ tenants: initialTenants }: { tenants: TenantRow[] 
       t.phone?.includes(q) ||
       t.email?.toLowerCase().includes(q) ||
       t.voucherNumber?.toLowerCase().includes(q) ||
-      t.activeLease?.property.addressLine1.toLowerCase().includes(q)
+      t.activeLease?.property.addressLine1.toLowerCase().includes(q) ||
+      t.activeLease?.property.entity?.name.toLowerCase().includes(q)
     )
   }, [initialTenants, search])
+
+  const entityGroups = useMemo(() => groupByEntity(filtered), [filtered])
 
   function openAdd() {
     setEditing(null)
@@ -214,42 +252,47 @@ export function TenantTable({ tenants: initialTenants }: { tenants: TenantRow[] 
       <div className="relative max-w-sm">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search tenants…"
+          placeholder="Search tenants, properties, entities…"
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="pl-8 h-8 text-sm"
         />
       </div>
 
-      {/* Table */}
+      {/* Content */}
       {syncing ? (
-        <div className="rounded-xl border border-gray-200/60 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Phone / Email</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Voucher #</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Property</th>
-                <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Rent</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Lease End</th>
-                <th className="w-20" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <tr key={i}>
-                  <td className="px-4 py-3"><div className="h-4 w-28 bg-gray-200 rounded animate-pulse" /></td>
-                  <td className="px-4 py-3 hidden sm:table-cell"><div className="h-4 w-24 bg-gray-200 rounded animate-pulse" /></td>
-                  <td className="px-4 py-3 hidden md:table-cell"><div className="h-4 w-20 bg-gray-200 rounded animate-pulse" /></td>
-                  <td className="px-4 py-3"><div className="h-4 w-36 bg-gray-200 rounded animate-pulse" /></td>
-                  <td className="px-4 py-3 hidden lg:table-cell"><div className="h-4 w-16 bg-gray-200 rounded animate-pulse ml-auto" /></td>
-                  <td className="px-4 py-3 hidden lg:table-cell"><div className="h-4 w-20 bg-gray-200 rounded animate-pulse" /></td>
-                  <td className="px-4 py-3"><div className="h-4 w-12 bg-gray-200 rounded animate-pulse" /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-6">
+          {Array.from({ length: 2 }).map((_, ci) => (
+            <div key={ci} className="rounded-xl border border-gray-200/60 bg-white shadow-sm overflow-hidden">
+              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+                <div className="h-4 w-4 bg-gray-200 rounded animate-pulse" />
+                <div className="h-4 w-48 bg-gray-200 rounded animate-pulse" />
+                <div className="h-4 w-16 bg-gray-200 rounded animate-pulse ml-2" />
+              </div>
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50/50 border-b border-gray-100">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Property</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tenant</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Lease Status</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Monthly Rent</th>
+                    <th className="w-16" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {Array.from({ length: 4 }).map((_, ri) => (
+                    <tr key={ri}>
+                      <td className="px-4 py-3"><div className="h-4 w-32 bg-gray-200 rounded animate-pulse" /></td>
+                      <td className="px-4 py-3"><div className="h-4 w-36 bg-gray-200 rounded animate-pulse" /></td>
+                      <td className="px-4 py-3 hidden md:table-cell"><div className="h-4 w-24 bg-gray-200 rounded animate-pulse" /></td>
+                      <td className="px-4 py-3 hidden sm:table-cell"><div className="h-4 w-16 bg-gray-200 rounded animate-pulse ml-auto" /></td>
+                      <td className="px-4 py-3"><div className="h-4 w-12 bg-gray-200 rounded animate-pulse" /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-lg border-2 border-dashed p-12 text-center">
@@ -259,83 +302,91 @@ export function TenantTable({ tenants: initialTenants }: { tenants: TenantRow[] 
           </p>
         </div>
       ) : (
-        <div className="rounded-xl border border-gray-200/60 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Phone / Email</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Voucher #</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Property</th>
-                <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Rent</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Lease End</th>
-                <th className="w-20" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filtered.map(tenant => (
-                <tr key={tenant.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 font-medium">
-                    {tenant.firstName} {tenant.lastName}
-                  </td>
-                  <td className="px-4 py-3 hidden sm:table-cell">
-                    <div className="text-sm">{tenant.phone ?? '—'}</div>
-                    {tenant.email && (
-                      <div className="text-xs text-muted-foreground">{tenant.email}</div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
-                    {tenant.voucherNumber ?? '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    {tenant.activeLease ? (
-                      <Link
-                        href={`/properties/${tenant.activeLease.property.id}`}
-                        className="text-primary hover:underline"
-                      >
-                        {tenant.activeLease.property.addressLine1}
-                        {tenant.activeLease.property.addressLine2 && (
-                          <span className="text-muted-foreground"> · {tenant.activeLease.property.addressLine2}</span>
+        <div className="space-y-6">
+          {entityGroups.map(group => (
+            <div key={group.entityName} className="rounded-xl border border-gray-200/60 bg-white shadow-sm overflow-hidden">
+              {/* Entity card header */}
+              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <h2 className="text-sm font-semibold text-gray-800">{group.entityName}</h2>
+                <span className="text-xs text-muted-foreground ml-1">
+                  · {group.tenants.length} tenant{group.tenants.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+
+              {/* Rows */}
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50/50 border-b border-gray-100">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Property</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tenant</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Lease Status</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Monthly Rent</th>
+                    <th className="w-16" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {group.tenants.map(tenant => (
+                    <tr key={tenant.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3">
+                        {tenant.activeLease ? (
+                          <Link
+                            href={`/properties/${tenant.activeLease.property.id}`}
+                            className="text-primary hover:underline text-sm"
+                          >
+                            {tenant.activeLease.property.addressLine1}
+                            {tenant.activeLease.property.addressLine2 && (
+                              <span className="text-muted-foreground"> · {tenant.activeLease.property.addressLine2}</span>
+                            )}
+                          </Link>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">No active lease</span>
                         )}
-                      </Link>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">No active lease</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums hidden lg:table-cell">
-                    {tenant.activeLease ? formatCurrency(tenant.activeLease.contractRent) : '—'}
-                  </td>
-                  <td className="px-4 py-3 hidden lg:table-cell text-muted-foreground">
-                    {tenant.activeLease?.endDate
-                      ? formatDate(tenant.activeLease.endDate)
-                      : tenant.activeLease
-                      ? 'Month-to-month'
-                      : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => openEdit(tenant)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
-                        onClick={() => deleteTenant(tenant)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-sm">
+                          {tenant.lastName}, {tenant.firstName}
+                        </div>
+                        {tenant.phone && (
+                          <div className="text-xs text-muted-foreground">{tenant.phone}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 hidden md:table-cell text-muted-foreground text-sm">
+                        {tenant.activeLease?.endDate
+                          ? `Ends ${formatDate(tenant.activeLease.endDate)}`
+                          : tenant.activeLease
+                          ? 'Month-to-month'
+                          : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums hidden sm:table-cell">
+                        {tenant.activeLease ? formatCurrency(tenant.activeLease.contractRent) : '—'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => openEdit(tenant)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={() => deleteTenant(tenant)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
         </div>
       )}
 

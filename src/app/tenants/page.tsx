@@ -16,7 +16,12 @@ export default async function TenantsPage() {
         orderBy: { startDate: 'desc' },
         include: {
           property: {
-            select: { id: true, addressLine1: true, addressLine2: true },
+            select: {
+              id: true,
+              addressLine1: true,
+              addressLine2: true,
+              entity: { select: { id: true, name: true } },
+            },
           },
         },
       },
@@ -40,7 +45,12 @@ export default async function TenantsPage() {
           startDate: t.leases[0].startDate.toISOString(),
           endDate: t.leases[0].endDate?.toISOString() ?? null,
           contractRent: Number(t.leases[0].contractRent),
-          property: t.leases[0].property,
+          property: {
+            id: t.leases[0].property.id,
+            addressLine1: t.leases[0].property.addressLine1,
+            addressLine2: t.leases[0].property.addressLine2,
+            entity: t.leases[0].property.entity,
+          },
         }
       : null,
   }))
