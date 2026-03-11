@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import Papa from 'papaparse'
+import { toast } from 'sonner'
 import { Upload, Download, CheckCircle2, XCircle, AlertCircle, FileText, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -141,9 +142,16 @@ export function PropertyImporter({ entityNames }: { entityNames: string[] }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rows: payload }),
       })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Import failed' }))
+        toast.error(err.error || 'Import failed')
+        return
+      }
       const data = await res.json()
       setResults(data.results ?? [])
       setStep('results')
+    } catch {
+      toast.error('Network error — please try again')
     } finally {
       setImporting(false)
     }

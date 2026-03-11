@@ -44,7 +44,7 @@ export async function PATCH(
       },
     })
 
-    return NextResponse.json(entity)
+    return NextResponse.json({ ...entity, pmFeePct: Number(entity.pmFeePct) })
   } catch {
     return NextResponse.json({ error: 'Entity not found' }, { status: 404 })
   }

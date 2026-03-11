@@ -38,7 +38,12 @@ export async function PATCH(
       },
     })
 
-    return NextResponse.json(updated)
+    return NextResponse.json({
+      ...updated,
+      premiumAnnual: updated.premiumAnnual !== null ? Number(updated.premiumAnnual) : null,
+      liabilityLimit: updated.liabilityLimit !== null ? Number(updated.liabilityLimit) : null,
+      premisesLimit: updated.premisesLimit !== null ? Number(updated.premisesLimit) : null,
+    })
   } catch {
     return NextResponse.json({ error: 'Policy not found' }, { status: 404 })
   }

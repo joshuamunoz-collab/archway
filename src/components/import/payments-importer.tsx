@@ -34,7 +34,7 @@ function validateRow(row: Record<string, string>): string[] {
 export function PaymentsImporter() {
   const [step, setStep] = useState<Step>('upload')
   const [rows, setRows] = useState<ParsedRow[]>([])
-  const [results, setResults] = useState<{ ok: boolean; message: string }[]>([])
+  const [results, setResults] = useState<{ row: number; status: 'imported' | 'error'; message?: string }[]>([])
   const [importing, setImporting] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -70,15 +70,26 @@ export function PaymentsImporter() {
   async function runImport() {
     setImporting(true)
     setStep('importing')
-    const res = await fetch('/api/import/payments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rows: validRows.map(r => { const { _errors, property_address, ...rest } = r; void _errors; return { ...rest, addressLine1: property_address ?? rest.addressLine1 } }) }),
-    })
-    const data = await res.json()
-    setResults(data.results ?? [])
-    setStep('done')
-    setImporting(false)
+    try {
+      const res = await fetch('/api/import/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows: validRows.map(r => { const { _errors, property_address, ...rest } = r; void _errors; return { ...rest, addressLine1: property_address ?? rest.addressLine1 } }) }),
+      })
+      if (!res.ok) {
+        setResults([{ row: 0, status: 'error', message: 'Import request failed' }])
+        setStep('done')
+        return
+      }
+      const data = await res.json()
+      setResults(data.results ?? [])
+      setStep('done')
+    } catch {
+      setResults([{ row: 0, status: 'error', message: 'Network error' }])
+      setStep('done')
+    } finally {
+      setImporting(false)
+    }
   }
 
   function reset() {
@@ -183,8 +194,8 @@ export function PaymentsImporter() {
   }
 
   // done
-  const succeeded = results.filter(r => r.ok).length
-  const failed = results.filter(r => !r.ok).length
+  const succeeded = results.filter(r => r.status === 'imported').length
+  const failed = results.filter(r => r.status === 'error').length
   return (
     <Card>
       <CardContent className="pt-6 space-y-4">

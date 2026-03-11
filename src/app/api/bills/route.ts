@@ -86,5 +86,9 @@ export async function POST(request: Request) {
     },
   })
 
-  return NextResponse.json(bill, { status: 201 })
+  return NextResponse.json({
+    ...bill,
+    totalAmount: Number(bill.totalAmount),
+    lineItems: bill.lineItems.map(li => ({ ...li, amount: Number(li.amount) })),
+  }, { status: 201 })
 }

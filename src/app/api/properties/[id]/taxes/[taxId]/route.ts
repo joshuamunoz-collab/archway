@@ -36,7 +36,12 @@ export async function PATCH(
       },
     })
 
-    return NextResponse.json(updated)
+    return NextResponse.json({
+      ...updated,
+      assessedValue: updated.assessedValue !== null ? Number(updated.assessedValue) : null,
+      annualAmount: updated.annualAmount !== null ? Number(updated.annualAmount) : null,
+      paidAmount: updated.paidAmount !== null ? Number(updated.paidAmount) : null,
+    })
   } catch {
     return NextResponse.json({ error: 'Tax record not found' }, { status: 404 })
   }

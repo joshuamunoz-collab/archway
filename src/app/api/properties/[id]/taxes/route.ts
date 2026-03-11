@@ -35,5 +35,10 @@ export async function POST(
     },
   })
 
-  return NextResponse.json(tax, { status: 201 })
+  return NextResponse.json({
+    ...tax,
+    assessedValue: tax.assessedValue !== null ? Number(tax.assessedValue) : null,
+    annualAmount: tax.annualAmount !== null ? Number(tax.annualAmount) : null,
+    paidAmount: tax.paidAmount !== null ? Number(tax.paidAmount) : null,
+  }, { status: 201 })
 }

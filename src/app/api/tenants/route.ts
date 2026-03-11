@@ -22,7 +22,18 @@ export async function GET() {
     },
   })
 
-  return NextResponse.json(tenants)
+  // Serialize Prisma Decimal fields in nested leases
+  const serialized = tenants.map(t => ({
+    ...t,
+    leases: t.leases.map(l => ({
+      ...l,
+      contractRent: Number(l.contractRent),
+      hapAmount: l.hapAmount ? Number(l.hapAmount) : null,
+      tenantCopay: l.tenantCopay ? Number(l.tenantCopay) : null,
+    })),
+  }))
+
+  return NextResponse.json(serialized)
 }
 
 export async function POST(request: Request) {

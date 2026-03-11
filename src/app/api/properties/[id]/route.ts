@@ -24,17 +24,21 @@ export async function PATCH(
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
   }
 
-  const updated = await prisma.property.update({ where: { id }, data })
+  try {
+    const updated = await prisma.property.update({ where: { id }, data })
 
-  await prisma.activityLog.create({
-    data: {
-      entityType: 'property',
-      entityId: id,
-      action: 'updated',
-      details: { updatedFields: Object.keys(data) },
-      userId: auth.user.id,
-    },
-  })
+    await prisma.activityLog.create({
+      data: {
+        entityType: 'property',
+        entityId: id,
+        action: 'updated',
+        details: { updatedFields: Object.keys(data) },
+        userId: auth.user.id,
+      },
+    })
 
-  return NextResponse.json(updated)
+    return NextResponse.json(updated)
+  } catch {
+    return NextResponse.json({ error: 'Property not found' }, { status: 404 })
+  }
 }

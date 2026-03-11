@@ -21,19 +21,23 @@ export async function PATCH(
   if ('firstName' in data && !data.firstName) return NextResponse.json({ error: 'First name required' }, { status: 400 })
   if ('lastName' in data && !data.lastName) return NextResponse.json({ error: 'Last name required' }, { status: 400 })
 
-  const tenant = await prisma.tenant.update({ where: { id }, data })
+  try {
+    const tenant = await prisma.tenant.update({ where: { id }, data })
 
-  await prisma.activityLog.create({
-    data: {
-      entityType: 'tenant',
-      entityId: id,
-      action: 'tenant_updated',
-      details: { updatedFields: Object.keys(data) },
-      userId: auth.user.id,
-    },
-  })
+    await prisma.activityLog.create({
+      data: {
+        entityType: 'tenant',
+        entityId: id,
+        action: 'tenant_updated',
+        details: { updatedFields: Object.keys(data) },
+        userId: auth.user.id,
+      },
+    })
 
-  return NextResponse.json(tenant)
+    return NextResponse.json(tenant)
+  } catch {
+    return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
+  }
 }
 
 export async function DELETE(
@@ -51,7 +55,21 @@ export async function DELETE(
     return NextResponse.json({ error: 'Cannot delete tenant with an active lease' }, { status: 409 })
   }
 
-  await prisma.tenant.delete({ where: { id } })
+  try {
+    await prisma.tenant.delete({ where: { id } })
 
-  return NextResponse.json({ success: true })
+    await prisma.activityLog.create({
+      data: {
+        entityType: 'tenant',
+        entityId: id,
+        action: 'tenant_deleted',
+        details: {},
+        userId: auth.user.id,
+      },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch {
+    return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
+  }
 }

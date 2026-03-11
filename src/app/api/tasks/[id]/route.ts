@@ -58,22 +58,26 @@ export async function PATCH(
     }
   }
 
-  const task = await prisma.pmTask.update({
-    where: { id },
-    data: updateData,
-  })
+  try {
+    const task = await prisma.pmTask.update({
+      where: { id },
+      data: updateData,
+    })
 
-  await prisma.activityLog.create({
-    data: {
-      entityType: 'task',
-      entityId: id,
-      action: 'task_updated',
-      details: { changes: Object.keys(updateData) },
-      userId: auth.user.id,
-    },
-  })
+    await prisma.activityLog.create({
+      data: {
+        entityType: 'task',
+        entityId: id,
+        action: 'task_updated',
+        details: { changes: Object.keys(updateData) },
+        userId: auth.user.id,
+      },
+    })
 
-  return NextResponse.json(task)
+    return NextResponse.json(task)
+  } catch {
+    return NextResponse.json({ error: 'Task not found' }, { status: 404 })
+  }
 }
 
 export async function DELETE(

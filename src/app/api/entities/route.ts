@@ -11,7 +11,13 @@ export async function GET() {
     orderBy: { name: 'asc' },
   })
 
-  return NextResponse.json(entities)
+  // Serialize Prisma Decimal fields
+  const serialized = entities.map(e => ({
+    ...e,
+    pmFeePct: Number(e.pmFeePct),
+  }))
+
+  return NextResponse.json(serialized)
 }
 
 export async function POST(request: Request) {
@@ -49,5 +55,5 @@ export async function POST(request: Request) {
     },
   })
 
-  return NextResponse.json(entity, { status: 201 })
+  return NextResponse.json({ ...entity, pmFeePct: Number(entity.pmFeePct) }, { status: 201 })
 }

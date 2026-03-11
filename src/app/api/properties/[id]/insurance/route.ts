@@ -14,7 +14,15 @@ export async function GET(
     where: { propertyId: id },
     orderBy: { effectiveDate: 'desc' },
   })
-  return NextResponse.json(policies)
+  // Serialize Prisma Decimal fields
+  const serialized = policies.map(p => ({
+    ...p,
+    premiumAnnual: p.premiumAnnual !== null ? Number(p.premiumAnnual) : null,
+    liabilityLimit: p.liabilityLimit !== null ? Number(p.liabilityLimit) : null,
+    premisesLimit: p.premisesLimit !== null ? Number(p.premisesLimit) : null,
+  }))
+
+  return NextResponse.json(serialized)
 }
 
 export async function POST(
@@ -52,5 +60,10 @@ export async function POST(
     },
   })
 
-  return NextResponse.json(policy, { status: 201 })
+  return NextResponse.json({
+    ...policy,
+    premiumAnnual: policy.premiumAnnual !== null ? Number(policy.premiumAnnual) : null,
+    liabilityLimit: policy.liabilityLimit !== null ? Number(policy.liabilityLimit) : null,
+    premisesLimit: policy.premisesLimit !== null ? Number(policy.premisesLimit) : null,
+  }, { status: 201 })
 }

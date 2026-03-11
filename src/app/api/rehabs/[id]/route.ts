@@ -19,7 +19,14 @@ export async function GET(
   })
 
   if (!rehab) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json(rehab)
+
+  // Serialize Prisma Decimal fields
+  return NextResponse.json({
+    ...rehab,
+    originalEstimate: rehab.originalEstimate !== null ? Number(rehab.originalEstimate) : null,
+    currentEstimate: rehab.currentEstimate !== null ? Number(rehab.currentEstimate) : null,
+    actualCost: Number(rehab.actualCost),
+  })
 }
 
 export async function PATCH(
@@ -42,22 +49,31 @@ export async function PATCH(
   if (body.status !== undefined) updateData.status = body.status
   if (body.notes !== undefined) updateData.notes = body.notes?.trim() || null
 
-  const rehab = await prisma.rehabProject.update({
-    where: { id },
-    data: updateData,
-  })
+  try {
+    const rehab = await prisma.rehabProject.update({
+      where: { id },
+      data: updateData,
+    })
 
-  await prisma.activityLog.create({
-    data: {
-      entityType: 'rehab',
-      entityId: id,
-      action: 'rehab_updated',
-      details: { changes: Object.keys(updateData) },
-      userId: auth.user.id,
-    },
-  })
+    await prisma.activityLog.create({
+      data: {
+        entityType: 'rehab',
+        entityId: id,
+        action: 'rehab_updated',
+        details: { changes: Object.keys(updateData) },
+        userId: auth.user.id,
+      },
+    })
 
-  return NextResponse.json(rehab)
+    return NextResponse.json({
+      ...rehab,
+      originalEstimate: rehab.originalEstimate !== null ? Number(rehab.originalEstimate) : null,
+      currentEstimate: rehab.currentEstimate !== null ? Number(rehab.currentEstimate) : null,
+      actualCost: Number(rehab.actualCost),
+    })
+  } catch {
+    return NextResponse.json({ error: 'Rehab project not found' }, { status: 404 })
+  }
 }
 
 export async function DELETE(

@@ -14,7 +14,15 @@ export async function GET() {
     orderBy: { createdAt: 'desc' },
   })
 
-  return NextResponse.json(rehabs)
+  // Serialize Prisma Decimal fields
+  const serialized = rehabs.map(r => ({
+    ...r,
+    originalEstimate: r.originalEstimate !== null ? Number(r.originalEstimate) : null,
+    currentEstimate: r.currentEstimate !== null ? Number(r.currentEstimate) : null,
+    actualCost: Number(r.actualCost),
+  }))
+
+  return NextResponse.json(serialized)
 }
 
 export async function POST(request: Request) {
@@ -57,5 +65,10 @@ export async function POST(request: Request) {
     },
   })
 
-  return NextResponse.json(rehab, { status: 201 })
+  return NextResponse.json({
+    ...rehab,
+    originalEstimate: rehab.originalEstimate !== null ? Number(rehab.originalEstimate) : null,
+    currentEstimate: rehab.currentEstimate !== null ? Number(rehab.currentEstimate) : null,
+    actualCost: Number(rehab.actualCost),
+  }, { status: 201 })
 }

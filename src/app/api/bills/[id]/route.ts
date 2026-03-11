@@ -43,6 +43,13 @@ export async function GET(
     paidDate: bill.paidDate?.toISOString() ?? null,
     createdAt: bill.createdAt.toISOString(),
     updatedAt: bill.updatedAt.toISOString(),
+    property: {
+      ...bill.property,
+      entity: {
+        ...bill.property.entity,
+        pmFeePct: Number(bill.property.entity.pmFeePct),
+      },
+    },
     lineItems: bill.lineItems.map(li => ({ ...li, amount: Number(li.amount) })),
     messages: bill.messages.map(m => ({
       ...m,

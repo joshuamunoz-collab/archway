@@ -43,5 +43,8 @@ export async function POST(
     },
   })
 
-  return NextResponse.json(expense, { status: 201 })
+  return NextResponse.json({
+    ...expense,
+    amount: Number(expense.amount),
+  }, { status: 201 })
 }
