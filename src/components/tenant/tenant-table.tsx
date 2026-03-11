@@ -269,24 +269,31 @@ export function TenantTable({ tenants: initialTenants }: { tenants: TenantRow[] 
                 <div className="h-4 w-48 bg-gray-200 rounded animate-pulse" />
                 <div className="h-4 w-16 bg-gray-200 rounded animate-pulse ml-2" />
               </div>
-              <table className="w-full text-sm">
+              <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
+                <colgroup>
+                  <col style={{ width: '25%' }} />
+                  <col style={{ width: '30%' }} />
+                  <col style={{ width: '20%' }} />
+                  <col style={{ width: '17%' }} />
+                  <col style={{ width: '8%' }} />
+                </colgroup>
                 <thead className="bg-gray-50/50 border-b border-gray-100">
                   <tr>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Property</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tenant</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Lease Status</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Monthly Rent</th>
-                    <th className="w-16" />
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lease Status</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Monthly Rent</th>
+                    <th />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {Array.from({ length: 4 }).map((_, ri) => (
                     <tr key={ri}>
-                      <td className="px-4 py-3"><div className="h-4 w-32 bg-gray-200 rounded animate-pulse" /></td>
-                      <td className="px-4 py-3"><div className="h-4 w-36 bg-gray-200 rounded animate-pulse" /></td>
-                      <td className="px-4 py-3 hidden md:table-cell"><div className="h-4 w-24 bg-gray-200 rounded animate-pulse" /></td>
-                      <td className="px-4 py-3 hidden sm:table-cell"><div className="h-4 w-16 bg-gray-200 rounded animate-pulse ml-auto" /></td>
-                      <td className="px-4 py-3"><div className="h-4 w-12 bg-gray-200 rounded animate-pulse" /></td>
+                      <td className="px-4 py-3"><div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse" /></td>
+                      <td className="px-4 py-3"><div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse" /></td>
+                      <td className="px-4 py-3"><div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse" /></td>
+                      <td className="px-4 py-3"><div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse ml-auto" /></td>
+                      <td className="px-4 py-3"><div className="h-4 w-8 bg-gray-200 rounded animate-pulse" /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -315,20 +322,27 @@ export function TenantTable({ tenants: initialTenants }: { tenants: TenantRow[] 
               </div>
 
               {/* Rows */}
-              <table className="w-full text-sm">
+              <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
+                <colgroup>
+                  <col style={{ width: '25%' }} />
+                  <col style={{ width: '30%' }} />
+                  <col style={{ width: '20%' }} />
+                  <col style={{ width: '17%' }} />
+                  <col style={{ width: '8%' }} />
+                </colgroup>
                 <thead className="bg-gray-50/50 border-b border-gray-100">
                   <tr>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Property</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tenant</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Lease Status</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Monthly Rent</th>
-                    <th className="w-16" />
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lease Status</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Monthly Rent</th>
+                    <th />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {group.tenants.map(tenant => (
                     <tr key={tenant.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 truncate">
                         {tenant.activeLease ? (
                           <Link
                             href={`/properties/${tenant.activeLease.property.id}`}
@@ -343,22 +357,22 @@ export function TenantTable({ tenants: initialTenants }: { tenants: TenantRow[] 
                           <span className="text-muted-foreground text-xs">No active lease</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-sm">
+                      <td className="px-4 py-3 truncate">
+                        <div className="font-medium text-sm truncate">
                           {tenant.lastName}, {tenant.firstName}
                         </div>
                         {tenant.phone && (
-                          <div className="text-xs text-muted-foreground">{tenant.phone}</div>
+                          <div className="text-xs text-muted-foreground truncate">{tenant.phone}</div>
                         )}
                       </td>
-                      <td className="px-4 py-3 hidden md:table-cell text-muted-foreground text-sm">
+                      <td className="px-4 py-3 text-muted-foreground text-sm truncate">
                         {tenant.activeLease?.endDate
                           ? `Ends ${formatDate(tenant.activeLease.endDate)}`
                           : tenant.activeLease
                           ? 'Month-to-month'
                           : '—'}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums hidden sm:table-cell">
+                      <td className="px-4 py-3 text-right tabular-nums">
                         {tenant.activeLease ? formatCurrency(tenant.activeLease.contractRent) : '—'}
                       </td>
                       <td className="px-4 py-3">
