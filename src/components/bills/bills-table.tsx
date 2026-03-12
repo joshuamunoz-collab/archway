@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Plus, FileText, ChevronDown, CheckSquare, Trash2, Check, X, MessageSquare } from 'lucide-react'
+import { Plus, FileText, ChevronDown, CheckSquare, Trash2, Check, X, MessageSquare, Kanban } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -106,9 +106,11 @@ function emptyLineItem(): LineItem {
 export function BillsTable({
   bills: initialBills,
   properties,
+  onSwitchView,
 }: {
   bills: BillRow[]
   properties: PropertyOption[]
+  onSwitchView?: () => void
 }) {
   const router = useRouter()
   const [tab, setTab] = useState('all')
@@ -320,9 +322,16 @@ export function BillsTable({
           <h1 className="text-2xl font-bold text-gray-900">PM Bills</h1>
           <span className="text-sm text-muted-foreground">({initialBills.length})</span>
         </div>
-        <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
-          <Plus className="h-4 w-4" /> Add Bill
-        </Button>
+        <div className="flex items-center gap-2">
+          {onSwitchView && (
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={onSwitchView}>
+              <Kanban className="h-4 w-4" /> Pipeline
+            </Button>
+          )}
+          <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
+            <Plus className="h-4 w-4" /> Add Bill
+          </Button>
+        </div>
       </div>
 
       {/* KPI cards */}
