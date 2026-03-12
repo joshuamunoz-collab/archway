@@ -36,6 +36,9 @@ export interface PipelineCard {
   monthlyRent: number
   status: string
   paidDate: string | null
+  date: string
+  vendorName: string | null
+  invoiceNumber: string | null
 }
 
 const PIPELINE_COLUMNS = [

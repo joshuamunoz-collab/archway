@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Plus, FileText, ChevronDown, CheckSquare, Trash2, Check, X, MessageSquare, Kanban } from 'lucide-react'
+import { Plus, FileText, ChevronDown, CheckSquare, Trash2, Check, X, MessageSquare, Kanban, Building2 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,6 +29,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { EXPENSE_CATEGORIES } from '@/lib/expense-categories'
 import { formatCurrency, formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import type { PipelineCard } from './bills-pipeline'
 
 interface LineItem {
   id?: string
@@ -37,28 +38,6 @@ interface LineItem {
   subcategory: string | null
   amount: number
   sortOrder: number
-}
-
-interface BillRow {
-  id: string
-  propertyId: string
-  property: { id: string; addressLine1: string; addressLine2: string | null; entity: { id: string; name: string } }
-  vendorName: string | null
-  invoiceNumber: string | null
-  billDate: string
-  dueDate: string | null
-  totalAmount: number
-  status: string
-  approvedBy: string | null
-  approvedAt: string | null
-  paidDate: string | null
-  paymentMethod: string | null
-  paymentReference: string | null
-  invoiceUrl: string | null
-  notes: string | null
-  createdAt: string
-  approver: { fullName: string } | null
-  lineItems: LineItem[]
 }
 
 interface PropertyOption {
@@ -104,11 +83,11 @@ function emptyLineItem(): LineItem {
 }
 
 export function BillsTable({
-  bills: initialBills,
+  cards,
   properties,
   onSwitchView,
 }: {
-  bills: BillRow[]
+  cards: PipelineCard[]
   properties: PropertyOption[]
   onSwitchView?: () => void
 }) {
@@ -140,42 +119,56 @@ export function BillsTable({
     paymentReference: '',
   })
 
+  // Filter by status tab and search
   const filtered = useMemo(() => {
-    let list = initialBills
-    if (tab !== 'all') list = list.filter(b => b.status === tab)
+    let list = cards
+    if (tab !== 'all') list = list.filter(c => c.status === tab)
     if (search.trim()) {
       const q = search.toLowerCase()
-      list = list.filter(b =>
-        b.property.addressLine1.toLowerCase().includes(q) ||
-        b.vendorName?.toLowerCase().includes(q) ||
-        b.invoiceNumber?.toLowerCase().includes(q)
+      list = list.filter(c =>
+        c.propertyAddress.toLowerCase().includes(q) ||
+        c.tenantName.toLowerCase().includes(q) ||
+        c.vendorName?.toLowerCase().includes(q) ||
+        c.invoiceNumber?.toLowerCase().includes(q)
       )
     }
     return list
-  }, [initialBills, tab, search])
+  }, [cards, tab, search])
 
-  // KPI calculations — memoized to avoid recalculating on every render
+  // Group filtered rows by entity
+  const entityGroups = useMemo(() => {
+    const map = new Map<string, { entityId: string; entityName: string; rows: PipelineCard[] }>()
+    for (const c of filtered) {
+      if (!map.has(c.entityId)) {
+        map.set(c.entityId, { entityId: c.entityId, entityName: c.entityName, rows: [] })
+      }
+      map.get(c.entityId)!.rows.push(c)
+    }
+    return Array.from(map.values()).sort((a, b) => a.entityName.localeCompare(b.entityName))
+  }, [filtered])
+
+  // KPI calculations from all cards (not just filtered)
   const { needsReviewAmt, needsReviewCount, approvedAmt, approvedCount, paidThisMonth } = useMemo(() => {
     let nrAmt = 0, nrCount = 0, aAmt = 0, aCount = 0, ptm = 0
     const now = new Date()
-    for (const b of initialBills) {
-      if (b.status === 'received' || b.status === 'under_review') {
-        nrAmt += b.totalAmount
+    for (const c of cards) {
+      if (c.status === 'received' || c.status === 'under_review') {
+        nrAmt += c.monthlyRent
         nrCount++
       }
-      if (b.status === 'approved') {
-        aAmt += b.totalAmount
+      if (c.status === 'approved') {
+        aAmt += c.monthlyRent
         aCount++
       }
-      if (b.status === 'paid' && b.paidDate) {
-        const d = new Date(b.paidDate)
+      if (c.status === 'paid' && c.paidDate) {
+        const d = new Date(c.paidDate)
         if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) {
-          ptm += b.totalAmount
+          ptm += c.monthlyRent
         }
       }
     }
     return { needsReviewAmt: nrAmt, needsReviewCount: nrCount, approvedAmt: aAmt, approvedCount: aCount, paidThisMonth: ptm }
-  }, [initialBills])
+  }, [cards])
 
   const totalLineItems = lineItems.reduce((s, li) => s + (Number(li.amount) || 0), 0)
 
@@ -191,7 +184,7 @@ export function BillsTable({
     if (selected.size === filtered.length) {
       setSelected(new Set())
     } else {
-      setSelected(new Set(filtered.map(b => b.id)))
+      setSelected(new Set(filtered.map(c => c.id)))
     }
   }
 
@@ -236,8 +229,12 @@ export function BillsTable({
     }
   }
 
-  async function updateStatus(billId: string, status: string) {
-    const res = await fetch(`/api/bills/${billId}`, {
+  async function updateStatus(card: PipelineCard, status: string) {
+    if (!card.billId) {
+      toast.error('No bill exists yet — drag in Pipeline view to create one')
+      return
+    }
+    const res = await fetch(`/api/bills/${card.billId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
@@ -247,9 +244,10 @@ export function BillsTable({
     router.refresh()
   }
 
-  async function deleteBill(billId: string) {
+  async function deleteBill(card: PipelineCard) {
+    if (!card.billId) return
     if (!confirm('Delete this bill? This cannot be undone.')) return
-    const res = await fetch(`/api/bills/${billId}`, { method: 'DELETE' })
+    const res = await fetch(`/api/bills/${card.billId}`, { method: 'DELETE' })
     if (!res.ok) { toast.error((await res.json()).error ?? 'Failed to delete'); return }
     toast.success('Bill deleted')
     router.refresh()
@@ -281,10 +279,19 @@ export function BillsTable({
         if (!res.ok) throw new Error((await res.json()).error)
         toast.success('Bill marked paid — expenses auto-created')
       } else {
+        // Bulk pay only works for cards that have billIds
+        const billIds = Array.from(selected)
+          .map(id => cards.find(c => c.id === id)?.billId)
+          .filter((id): id is string => id != null)
+        if (billIds.length === 0) {
+          toast.error('No bills exist yet for selected tenants')
+          setSaving(false)
+          return
+        }
         const res = await fetch('/api/bills/bulk', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'pay', billIds: Array.from(selected), ...payForm }),
+          body: JSON.stringify({ action: 'pay', billIds, ...payForm }),
         })
         if (!res.ok) throw new Error((await res.json()).error)
         const { updated } = await res.json()
@@ -301,10 +308,17 @@ export function BillsTable({
   }
 
   async function bulkApprove() {
+    const billIds = Array.from(selected)
+      .map(id => cards.find(c => c.id === id)?.billId)
+      .filter((id): id is string => id != null)
+    if (billIds.length === 0) {
+      toast.error('No bills exist yet for selected tenants')
+      return
+    }
     const res = await fetch('/api/bills/bulk', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'approve', billIds: Array.from(selected) }),
+      body: JSON.stringify({ action: 'approve', billIds }),
     })
     if (!res.ok) { toast.error('Failed'); return }
     const { updated } = await res.json()
@@ -320,7 +334,7 @@ export function BillsTable({
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-muted-foreground" />
           <h1 className="text-2xl font-bold text-gray-900">PM Bills</h1>
-          <span className="text-sm text-muted-foreground">({initialBills.length})</span>
+          <span className="text-sm text-muted-foreground">({cards.length})</span>
         </div>
         <div className="flex items-center gap-2">
           {onSwitchView && (
@@ -340,14 +354,14 @@ export function BillsTable({
           <CardContent className="pt-4 pb-3">
             <p className="text-xs text-muted-foreground font-medium">Needs Review</p>
             <p className="text-xl font-bold mt-0.5 tabular-nums text-amber-600">{formatCurrency(needsReviewAmt)}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{needsReviewCount} bill{needsReviewCount !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{needsReviewCount} tenant{needsReviewCount !== 1 ? 's' : ''}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 pb-3">
             <p className="text-xs text-muted-foreground font-medium">Approved / Unpaid</p>
             <p className="text-xl font-bold mt-0.5 tabular-nums text-blue-600">{formatCurrency(approvedAmt)}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{approvedCount} bill{approvedCount !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{approvedCount} tenant{approvedCount !== 1 ? 's' : ''}</p>
           </CardContent>
         </Card>
         <Card>
@@ -360,7 +374,6 @@ export function BillsTable({
 
       {/* Filters row */}
       <div className="flex items-center gap-3 flex-wrap">
-        {/* Status tabs */}
         <div className="flex gap-1 bg-secondary rounded-lg p-1">
           {STATUS_TABS.map(t => (
             <button
@@ -376,12 +389,11 @@ export function BillsTable({
           ))}
         </div>
         <Input
-          placeholder="Search property, vendor…"
+          placeholder="Search property, tenant, vendor…"
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="h-8 text-sm max-w-xs"
         />
-        {/* Bulk actions */}
         {selected.size > 0 && (
           <div className="flex items-center gap-2 ml-auto">
             <span className="text-xs text-muted-foreground">{selected.size} selected</span>
@@ -395,101 +407,130 @@ export function BillsTable({
         )}
       </div>
 
-      {/* Table */}
+      {/* Table grouped by entity */}
       {filtered.length === 0 ? (
         <div className="rounded-lg border-2 border-dashed p-12 text-center">
           <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">No bills found.</p>
+          <p className="text-sm text-muted-foreground">No tenants found.</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-gray-200/60 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-3 py-2.5 w-10">
-                  <Checkbox
-                    checked={selected.size === filtered.length && filtered.length > 0}
-                    onCheckedChange={toggleAll}
-                  />
-                </th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Property</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Vendor</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Invoice #</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                <th className="w-28" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filtered.map(bill => (
-                <tr key={bill.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-3 py-2.5">
-                    <Checkbox
-                      checked={selected.has(bill.id)}
-                      onCheckedChange={() => toggleSelect(bill.id)}
-                    />
-                  </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{formatDate(bill.billDate)}</td>
-                  <td className="px-4 py-2.5">
-                    <Link href={`/properties/${bill.property.id}`} className="text-primary hover:underline text-xs">
-                      {bill.property.addressLine1}
-                    </Link>
-                    <div className="text-xs text-muted-foreground">{bill.property.entity.name}</div>
-                  </td>
-                  <td className="px-4 py-2.5 hidden md:table-cell text-muted-foreground">{bill.vendorName ?? '—'}</td>
-                  <td className="px-4 py-2.5 hidden lg:table-cell text-muted-foreground">{bill.invoiceNumber ?? '—'}</td>
-                  <td className="px-4 py-2.5">
-                    <span className={cn(
-                      'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium',
-                      STATUS_BADGE[bill.status] ?? 'bg-secondary text-foreground border-border'
-                    )}>
-                      {STATUS_LABEL[bill.status] ?? bill.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-medium tabular-nums">{formatCurrency(bill.totalAmount)}</td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center justify-end gap-1">
-                      <Link href={`/bills/${bill.id}`}>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="View detail">
-                          <MessageSquare className="h-3.5 w-3.5" />
-                        </Button>
-                      </Link>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <ChevronDown className="h-3.5 w-3.5" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {bill.status !== 'approved' && bill.status !== 'paid' && (
-                            <DropdownMenuItem onClick={() => updateStatus(bill.id, 'approved')}>
-                              <Check className="h-3.5 w-3.5 mr-2" /> Approve
-                            </DropdownMenuItem>
-                          )}
-                          {bill.status !== 'paid' && (
-                            <DropdownMenuItem onClick={() => openPaySingle(bill.id)}>
-                              <CheckSquare className="h-3.5 w-3.5 mr-2" /> Mark Paid
-                            </DropdownMenuItem>
-                          )}
-                          {bill.status !== 'disputed' && bill.status !== 'paid' && (
-                            <DropdownMenuItem onClick={() => updateStatus(bill.id, 'disputed')} className="text-destructive">
-                              <X className="h-3.5 w-3.5 mr-2" /> Dispute
-                            </DropdownMenuItem>
-                          )}
-                          {bill.status !== 'paid' && (
-                            <DropdownMenuItem onClick={() => deleteBill(bill.id)} className="text-destructive">
-                              <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-6">
+          {entityGroups.map(group => (
+            <div key={group.entityId}>
+              {/* Entity header */}
+              <div className="flex items-center gap-2 mb-2">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <h2 className="text-sm font-semibold text-foreground">{group.entityName}</h2>
+                <Badge variant="secondary" className="text-[10px] h-5">
+                  {group.rows.length} tenant{group.rows.length !== 1 ? 's' : ''}
+                </Badge>
+              </div>
+              <div className="rounded-xl border border-gray-200/60 shadow-sm overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-3 py-2.5 w-10">
+                        <Checkbox
+                          checked={group.rows.every(r => selected.has(r.id)) && group.rows.length > 0}
+                          onCheckedChange={() => {
+                            const allSelected = group.rows.every(r => selected.has(r.id))
+                            setSelected(prev => {
+                              const next = new Set(prev)
+                              group.rows.forEach(r => allSelected ? next.delete(r.id) : next.add(r.id))
+                              return next
+                            })
+                          }}
+                        />
+                      </th>
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Property</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tenant</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Vendor</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Invoice #</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                      <th className="w-28" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {group.rows.map(card => (
+                      <tr key={card.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-3 py-2.5">
+                          <Checkbox
+                            checked={selected.has(card.id)}
+                            onCheckedChange={() => toggleSelect(card.id)}
+                          />
+                        </td>
+                        <td className="px-4 py-2.5 text-muted-foreground">{formatDate(card.date)}</td>
+                        <td className="px-4 py-2.5">
+                          <Link href={`/properties/${card.propertyId}`} className="text-primary hover:underline text-xs">
+                            {card.propertyAddress}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-2.5 text-xs">{card.tenantName}</td>
+                        <td className="px-4 py-2.5 hidden md:table-cell text-muted-foreground">{card.vendorName ?? '—'}</td>
+                        <td className="px-4 py-2.5 hidden lg:table-cell text-muted-foreground">{card.invoiceNumber ?? '—'}</td>
+                        <td className="px-4 py-2.5">
+                          <span className={cn(
+                            'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium',
+                            STATUS_BADGE[card.status] ?? 'bg-secondary text-foreground border-border'
+                          )}>
+                            {STATUS_LABEL[card.status] ?? card.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-medium tabular-nums">{formatCurrency(card.monthlyRent)}</td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center justify-end gap-1">
+                            {card.billId && (
+                              <Link href={`/bills/${card.billId}`}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" title="View bill">
+                                  <MessageSquare className="h-3.5 w-3.5" />
+                                </Button>
+                              </Link>
+                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7">
+                                  <ChevronDown className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {card.billId && card.status !== 'approved' && card.status !== 'paid' && (
+                                  <DropdownMenuItem onClick={() => updateStatus(card, 'approved')}>
+                                    <Check className="h-3.5 w-3.5 mr-2" /> Approve
+                                  </DropdownMenuItem>
+                                )}
+                                {card.billId && card.status !== 'paid' && (
+                                  <DropdownMenuItem onClick={() => openPaySingle(card.billId!)}>
+                                    <CheckSquare className="h-3.5 w-3.5 mr-2" /> Mark Paid
+                                  </DropdownMenuItem>
+                                )}
+                                {card.billId && card.status !== 'disputed' && card.status !== 'paid' && (
+                                  <DropdownMenuItem onClick={() => updateStatus(card, 'disputed')} className="text-destructive">
+                                    <X className="h-3.5 w-3.5 mr-2" /> Dispute
+                                  </DropdownMenuItem>
+                                )}
+                                {card.billId && card.status !== 'paid' && (
+                                  <DropdownMenuItem onClick={() => deleteBill(card)} className="text-destructive">
+                                    <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete Bill
+                                  </DropdownMenuItem>
+                                )}
+                                {!card.billId && (
+                                  <DropdownMenuItem disabled className="text-muted-foreground text-xs">
+                                    No bill yet — drag in Pipeline
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

@@ -11,13 +11,18 @@ const BillsPipeline = dynamic(
   { ssr: false }
 )
 
-interface Props {
-  tableBills: Parameters<typeof BillsTable>[0]['bills']
-  pipelineCards: PipelineCard[]
-  properties: Parameters<typeof BillsTable>[0]['properties']
+interface PropertyOption {
+  id: string
+  addressLine1: string
+  addressLine2: string | null
 }
 
-export function BillsViewToggle({ tableBills, pipelineCards, properties }: Props) {
+interface Props {
+  pipelineCards: PipelineCard[]
+  properties: PropertyOption[]
+}
+
+export function BillsViewToggle({ pipelineCards, properties }: Props) {
   const [view, setView] = useState<'list' | 'pipeline'>('list')
 
   if (view === 'pipeline') {
@@ -31,7 +36,7 @@ export function BillsViewToggle({ tableBills, pipelineCards, properties }: Props
 
   return (
     <BillsTable
-      bills={tableBills}
+      cards={pipelineCards}
       properties={properties}
       onSwitchView={() => setView('pipeline')}
     />
