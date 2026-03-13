@@ -9,7 +9,7 @@ export default async function TasksPage() {
   const now = new Date()
   const cutoff48h = new Date(now.getTime() - 48 * 60 * 60 * 1000)
 
-  const [tasks, properties] = await Promise.all([
+  const [tasks, properties, users] = await Promise.all([
     prisma.pmTask.findMany({
       include: {
         property: { select: { id: true, addressLine1: true } },
@@ -20,6 +20,11 @@ export default async function TasksPage() {
     prisma.property.findMany({
       select: { id: true, addressLine1: true },
       orderBy: { addressLine1: 'asc' },
+    }),
+    prisma.userProfile.findMany({
+      where: { isActive: true },
+      select: { id: true, fullName: true },
+      orderBy: { fullName: 'asc' },
     }),
   ])
 
@@ -77,6 +82,7 @@ export default async function TasksPage() {
   }
 
   const propertyOptions = properties.map(p => ({ id: p.id, addressLine1: p.addressLine1 }))
+  const userOptions = users.map(u => ({ id: u.id, fullName: u.fullName }))
 
   return (
     <AppShell>
@@ -85,7 +91,7 @@ export default async function TasksPage() {
           <h1 className="text-2xl font-bold text-gray-900">PM Tasks</h1>
           <p className="text-sm text-gray-500 mt-0.5">Track and manage property manager assignments</p>
         </div>
-        <TasksTable tasks={serialized} metrics={metrics} properties={propertyOptions} />
+        <TasksTable tasks={serialized} metrics={metrics} properties={propertyOptions} users={userOptions} />
       </div>
     </AppShell>
   )

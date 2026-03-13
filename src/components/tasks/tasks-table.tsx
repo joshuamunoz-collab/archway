@@ -5,11 +5,10 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { Plus, AlertCircle, Clock, CheckCircle2, TrendingUp } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Sheet,
@@ -35,15 +34,17 @@ const STATUS_COLORS: Record<string, string> = {
   in_progress:     'bg-amber-50 text-amber-700 border-amber-200',
   completed:       'bg-emerald-50 text-emerald-700 border-emerald-200',
   overdue:         'bg-red-50 text-red-700 border-red-200',
+  pending:         'bg-purple-50 text-purple-700 border-purple-200',
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  created:         'Created',
+  created:         'Open',
   sent_to_pm:      'Sent to PM',
   pm_acknowledged: 'Acknowledged',
   in_progress:     'In Progress',
   completed:       'Completed',
   overdue:         'Overdue',
+  pending:         'Pending',
 }
 
 const TASK_TYPE_LABELS: Record<string, string> = {
@@ -57,8 +58,16 @@ const TASK_TYPE_LABELS: Record<string, string> = {
 const STATUS_TABS = [
   { key: 'all',        label: 'All' },
   { key: 'open',       label: 'Open' },
+  { key: 'pending',    label: 'Pending' },
   { key: 'overdue',    label: 'Overdue' },
   { key: 'completed',  label: 'Completed' },
+]
+
+const CREATE_STATUS_OPTIONS = [
+  { value: 'created',     label: 'Open' },
+  { value: 'pending',     label: 'Pending' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'completed',   label: 'Completed' },
 ]
 
 interface TaskRow {
@@ -93,10 +102,16 @@ interface PropertyOption {
   addressLine1: string
 }
 
+interface UserOption {
+  id: string
+  fullName: string
+}
+
 const EMPTY_FORM = {
   propertyId: '',
   taskType: 'general',
   priority: 'medium',
+  status: 'created',
   title: '',
   description: '',
   assignedTo: '',
@@ -107,10 +122,12 @@ export function TasksTable({
   tasks,
   metrics,
   properties,
+  users,
 }: {
   tasks: TaskRow[]
   metrics: Metrics
   properties: PropertyOption[]
+  users: UserOption[]
 }) {
   const router = useRouter()
   const [tab, setTab] = useState('open')
@@ -123,9 +140,10 @@ export function TasksTable({
 
   const filtered = tasks.filter(t => {
     if (tab === 'open') {
-      const isOverdue = t.status !== 'completed' && t.dueDate && new Date(t.dueDate) < now
-      return t.status !== 'completed' && !isOverdue
+      const isOd = t.status !== 'completed' && t.status !== 'pending' && t.dueDate && new Date(t.dueDate) < now
+      return t.status !== 'completed' && t.status !== 'pending' && !isOd
     }
+    if (tab === 'pending') return t.status === 'pending'
     if (tab === 'overdue') {
       return t.status !== 'completed' && t.dueDate && new Date(t.dueDate) < now
     }
@@ -144,18 +162,20 @@ export function TasksTable({
 
   async function createTask() {
     if (!form.title.trim()) { toast.error('Title is required'); return }
+    if (!form.propertyId) { toast.error('Property is required'); return }
     setSaving(true)
     try {
       const res = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          propertyId: form.propertyId || null,
+          propertyId: form.propertyId,
           taskType: form.taskType,
           priority: form.priority,
+          status: form.status,
           title: form.title.trim(),
           description: form.description.trim() || null,
-          assignedTo: form.assignedTo.trim() || null,
+          assignedTo: form.assignedTo || null,
           dueDate: form.dueDate || null,
         }),
       })
@@ -248,7 +268,7 @@ export function TasksTable({
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Input
-            placeholder="Search tasks…"
+            placeholder="Search tasks..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="h-8 text-sm w-full sm:w-56"
@@ -286,13 +306,6 @@ export function TasksTable({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                      {tasks.length === 0 ? 'No tasks yet. Create your first task above.' : 'No tasks match your filters.'}
-                    </td>
-                  </tr>
-                )}
                 {filtered.map(t => (
                   <tr key={t.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3">
@@ -364,23 +377,27 @@ export function TasksTable({
               />
             </div>
             <div>
-              <Label>Property</Label>
-              <Select value={form.propertyId} onValueChange={v => setForm(f => ({ ...f, propertyId: v }))}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select property…" /></SelectTrigger>
+              <Label>Property *</Label>
+              <Select
+                value={form.propertyId || undefined}
+                onValueChange={v => setForm(f => ({ ...f, propertyId: v }))}
+              >
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select property..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No property</SelectItem>
-                  {properties.map(p => <SelectItem key={p.id} value={p.id}>{p.addressLine1}</SelectItem>)}
+                  {properties.filter(p => p.id).map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.addressLine1}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Task Type *</Label>
-                <Select value={form.taskType} onValueChange={v => setForm(f => ({ ...f, taskType: v }))}>
+                <Label>Status</Label>
+                <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {Object.entries(TASK_TYPE_LABELS).map(([v, l]) => (
-                      <SelectItem key={v} value={v}>{l}</SelectItem>
+                    {CREATE_STATUS_OPTIONS.map(o => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -409,19 +426,25 @@ export function TasksTable({
             </div>
             <div>
               <Label>Assigned To</Label>
-              <Input
-                value={form.assignedTo}
-                onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value }))}
-                placeholder="PM name"
-                className="mt-1"
-              />
+              <Select
+                value={form.assignedTo || undefined}
+                onValueChange={v => setForm(f => ({ ...f, assignedTo: v === '__none__' ? '' : v }))}
+              >
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select team member..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Unassigned</SelectItem>
+                  {users.filter(u => u.id && u.fullName).map(u => (
+                    <SelectItem key={u.id} value={u.fullName}>{u.fullName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Description</Label>
               <textarea
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                placeholder="Task details…"
+                placeholder="Task details..."
                 rows={3}
                 className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
@@ -429,7 +452,7 @@ export function TasksTable({
           </div>
           <SheetFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-            <Button onClick={createTask} disabled={saving}>{saving ? 'Saving…' : 'Create Task'}</Button>
+            <Button onClick={createTask} disabled={saving}>{saving ? 'Saving...' : 'Create Task'}</Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>

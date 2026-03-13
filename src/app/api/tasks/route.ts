@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       description: body.description?.trim() || null,
       assignedTo: body.assignedTo?.trim() || null,
       dueDate: body.dueDate ? new Date(body.dueDate) : null,
-      status: 'created',
+      status: body.status || 'created',
     },
     include: {
       property: { select: { id: true, addressLine1: true } },
