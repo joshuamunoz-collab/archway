@@ -15,7 +15,7 @@ export default async function DashboardPage() {
   const lmStart  = new Date(now.getFullYear(), now.getMonth() - 1, 1)
   const lmEnd    = new Date(now.getFullYear(), now.getMonth(), 0)
   const in60Days = new Date(now.getTime() + 60 * 86_400_000)
-  const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1)
+  const chartStart = new Date(2025, 0, 1) // Jan 2025 — fixed range for charts
   const cutoff48h = new Date(now.getTime() - 48 * 60 * 60 * 1000)
 
   const [
@@ -90,11 +90,11 @@ export default async function DashboardPage() {
       take: 10,
     }),
     prisma.payment.findMany({
-      where: { date: { gte: twelveMonthsAgo }, status: { not: 'nsf' } },
+      where: { date: { gte: chartStart }, status: { not: 'nsf' } },
       select: { date: true, amount: true },
     }),
     prisma.expense.findMany({
-      where: { date: { gte: twelveMonthsAgo } },
+      where: { date: { gte: chartStart } },
       select: { date: true, amount: true },
     }),
     prisma.entity.findMany({ select: { id: true, name: true } }),
@@ -179,9 +179,10 @@ export default async function DashboardPage() {
   const paymentsByMonth = groupByMonth(trailingPayments as { date: Date; amount: { toNumber(): number } }[])
   const expensesByMonth = groupByMonth(trailingExpenses as { date: Date; amount: { toNumber(): number } }[])
 
+  // Fixed range: Jan 2025 → Jan 2026 (13 months) — matches portfolio-charts.tsx
   const monthlyData: { month: string; income: number; expenses: number }[] = []
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+  for (let i = 0; i <= 12; i++) {
+    const d = new Date(2025, i, 1) // Jan 2025 (i=0) through Jan 2026 (i=12)
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     monthlyData.push({
       month: d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),

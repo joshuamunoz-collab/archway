@@ -29,7 +29,7 @@ interface EntityIncome {
 
 // Consistent entity color map — stable across renders
 const ENTITY_COLOR_MAP = new Map<string, string>()
-const COLOR_PALETTE = ['#2563EB', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6']
+const COLOR_PALETTE = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6']
 function getEntityColor(name: string): string {
   if (!ENTITY_COLOR_MAP.has(name)) {
     ENTITY_COLOR_MAP.set(name, COLOR_PALETTE[ENTITY_COLOR_MAP.size % COLOR_PALETTE.length])
@@ -37,28 +37,25 @@ function getEntityColor(name: string): string {
   return ENTITY_COLOR_MAP.get(name)!
 }
 
-// Compact currency for Y-axis: $0, $10k, $50k, $100k
+// Compact currency for Y-axis: $0, $15k, $30k
 function compactCurrency(v: number): string {
   if (v === 0) return '$0'
   if (Math.abs(v) >= 1000) return `$${Math.round(v / 1000)}k`
   return `$${v}`
 }
 
-const tooltipFormatter = (v: unknown) => formatCurrency(Number(v))
-
-// Format "YYYY-MM" → "Apr '25"
+// Format "YYYY-MM" → "Jan '25"
 function formatMonthShort(key: string): string {
   const [y, m] = key.split('-')
   const d = new Date(Number(y), Number(m) - 1, 1)
   return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
 }
 
-// Get trailing 12 month keys in order
-function getTrailing12MonthKeys(): string[] {
-  const now = new Date()
+// Fixed range: Jan 2025 → Jan 2026 (13 months)
+function getFixedMonthKeys(): string[] {
   const keys: string[] = []
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+  for (let i = 0; i <= 12; i++) {
+    const d = new Date(2025, i, 1) // Jan 2025 (i=0) through Jan 2026 (i=12)
     keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
   }
   return keys
@@ -87,11 +84,19 @@ function readLocalStorage(): LocalStorageData | null {
   }
 }
 
+function getLastImportTimestamp(): string | null {
+  try {
+    return localStorage.getItem('archway_last_import')
+  } catch {
+    return null
+  }
+}
+
 function buildMonthlyFromLocal(
   data: LocalStorageData,
   entityFilter: string,
 ): MonthlyData[] {
-  const keys = getTrailing12MonthKeys()
+  const keys = getFixedMonthKeys()
   const buckets = new Map<string, { income: number; expenses: number }>()
   for (const k of keys) buckets.set(k, { income: 0, expenses: 0 })
 
@@ -135,6 +140,42 @@ function buildEntityIncomeFromLocal(data: LocalStorageData): EntityIncome[] {
   return result.sort((a, b) => b.income - a.income)
 }
 
+// Custom tooltip showing Month, Income, Expenses, Net
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function CustomTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null
+  const income = Number(payload[0]?.value ?? 0)
+  const expenses = Number(payload[1]?.value ?? 0)
+  const net = income - expenses
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg shadow-md px-3 py-2.5 text-xs">
+      <p className="font-semibold text-gray-800 mb-1.5">{label}</p>
+      <div className="space-y-0.5">
+        <div className="flex items-center justify-between gap-4">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-[#3B82F6]" />
+            Income
+          </span>
+          <span className="font-medium tabular-nums">{formatCurrency(income)}</span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-[#F87171]" />
+            Expenses
+          </span>
+          <span className="font-medium tabular-nums">{formatCurrency(expenses)}</span>
+        </div>
+        <div className="border-t border-gray-100 pt-1 mt-1 flex items-center justify-between gap-4">
+          <span className="text-gray-500">Net</span>
+          <span className={`font-semibold tabular-nums ${net >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+            {formatCurrency(net)}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Custom label for horizontal bar ends
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function BarEndLabel(props: any) {
@@ -142,14 +183,14 @@ function BarEndLabel(props: any) {
   if (!value || value === 0) return null
   return (
     <text
-      x={x + width + 4}
+      x={x + width + 6}
       y={y + height / 2}
       fill="#374151"
       fontSize={11}
       fontWeight={500}
       dominantBaseline="central"
     >
-      {compactCurrency(Number(value))}
+      {formatCurrency(Number(value))}
     </text>
   )
 }
@@ -165,9 +206,11 @@ export const PortfolioCharts = memo(function PortfolioCharts({
 }) {
   const [localData, setLocalData] = useState<LocalStorageData | null>(null)
   const [entityFilter, setEntityFilter] = useState('all')
+  const [lastImport, setLastImport] = useState<string | null>(null)
 
   useEffect(() => {
     setLocalData(readLocalStorage())
+    setLastImport(getLastImportTimestamp())
   }, [])
 
   // Determine entity names from localStorage or server
@@ -198,157 +241,170 @@ export const PortfolioCharts = memo(function PortfolioCharts({
 
   // Dynamic chart title based on filter
   const chartTitle = entityFilter === 'all'
-    ? 'Income vs. Expenses — Trailing 12 Months'
-    : `${entityFilter} — Trailing 12 Months`
+    ? 'Income vs. Expenses'
+    : entityFilter
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      {/* Trailing 12 months — Grouped Bar Chart */}
-      <Card className="lg:col-span-2">
-        <CardHeader className="pb-2 pt-4 px-4">
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <CardTitle className="text-base font-semibold text-foreground leading-tight">
-              {chartTitle}
-            </CardTitle>
-            <select
-              value={entityFilter}
-              onChange={e => setEntityFilter(e.target.value)}
-              className="shrink-0 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 bg-white cursor-pointer shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-            >
-              <option value="all">All Entities</option>
-              {entityOptions.map(name => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-            </select>
-          </div>
-        </CardHeader>
-        <CardContent className="px-2 sm:px-4 pb-4">
-          {!hasMonthlyData ? (
-            <div className="flex items-center justify-center h-48 text-sm text-muted-foreground">
-              No financial data recorded yet
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart
-                data={monthlyData}
-                margin={{ top: 8, right: 8, bottom: 4, left: 0 }}
-                barCategoryGap="18%"
-                barGap={2}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                <XAxis
-                  dataKey="month"
-                  tick={{ fontSize: 10, fill: '#6B7280' }}
-                  tickLine={false}
-                  axisLine={{ stroke: '#e5e7eb' }}
-                  angle={-45}
-                  textAnchor="end"
-                  height={40}
-                  interval={0}
-                />
-                <YAxis
-                  tickFormatter={compactCurrency}
-                  tick={{ fontSize: 10, fill: '#6B7280' }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={48}
-                />
-                <Tooltip
-                  formatter={tooltipFormatter}
-                  contentStyle={{
-                    fontSize: 12,
-                    borderRadius: 8,
-                    border: '1px solid #e5e7eb',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                  }}
-                  cursor={{ fill: 'rgba(0,0,0,0.03)' }}
-                />
-                <Legend
-                  iconType="circle"
-                  iconSize={8}
-                  wrapperStyle={{ fontSize: 12, paddingTop: 4 }}
-                />
-                <Bar
-                  dataKey="income"
-                  name="Income"
-                  fill="#2563EB"
-                  radius={[3, 3, 0, 0]}
-                  animationDuration={400}
-                />
-                <Bar
-                  dataKey="expenses"
-                  name="Expenses"
-                  fill="#F97316"
-                  radius={[3, 3, 0, 0]}
-                  animationDuration={400}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
+    <div className="space-y-4">
+      {/* Last import timestamp */}
+      {lastImport && (
+        <p className="text-xs text-gray-400 text-right">
+          Last imported: {new Date(lastImport).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} at {new Date(lastImport).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+        </p>
+      )}
 
-      {/* MTD Income by Entity — Horizontal Bar Chart */}
-      <Card>
-        <CardHeader className="pb-2 pt-4 px-4">
-          <CardTitle className="text-base font-semibold text-foreground">MTD Income by Entity</CardTitle>
-        </CardHeader>
-        <CardContent className="px-2 sm:px-4 pb-4">
-          {!hasEntityData ? (
-            <div className="flex items-center justify-center h-48 text-sm text-muted-foreground">
-              No income recorded yet
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={Math.max(160, entityIncome.length * 52 + 32)}>
-              <BarChart
-                data={entityIncome}
-                layout="vertical"
-                margin={{ top: 4, right: 60, bottom: 4, left: 4 }}
-                barCategoryGap="28%"
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
-                <XAxis
-                  type="number"
-                  tickFormatter={compactCurrency}
-                  tick={{ fontSize: 10, fill: '#6B7280' }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  tick={{ fontSize: 10, fill: '#374151' }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={90}
-                  tickFormatter={(v: string) => v.length > 14 ? v.slice(0, 14) + '...' : v}
-                />
-                <Tooltip
-                  formatter={tooltipFormatter}
-                  contentStyle={{
-                    fontSize: 12,
-                    borderRadius: 8,
-                    border: '1px solid #e5e7eb',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                  }}
-                  labelFormatter={(label) => String(label)}
-                />
-                <Bar
-                  dataKey="income"
-                  name="Income"
-                  radius={[0, 4, 4, 0]}
-                  animationDuration={400}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Income vs Expenses — Grouped Bar Chart */}
+        <Card className="lg:col-span-2 shadow-none border border-gray-100">
+          <CardHeader className="pb-1 pt-4 px-5">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <CardTitle className="text-sm font-semibold text-gray-900">
+                  {chartTitle}
+                </CardTitle>
+                <p className="text-xs text-gray-400 mt-0.5">Jan 2025 — Jan 2026</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400 hidden sm:inline">Filter by Entity:</span>
+                <select
+                  value={entityFilter}
+                  onChange={e => setEntityFilter(e.target.value)}
+                  className="border border-gray-200 rounded-md px-2 py-1 text-xs text-gray-600 bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
                 >
-                  {entityIncome.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={getEntityColor(entry.name)} />
+                  <option value="all">All Entities</option>
+                  {entityOptions.map(name => (
+                    <option key={name} value={name}>{name}</option>
                   ))}
-                  <LabelList dataKey="income" content={BarEndLabel} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
+                </select>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="px-2 sm:px-4 pb-4 pt-2">
+            {!hasMonthlyData ? (
+              <div className="flex items-center justify-center h-[300px] text-sm text-muted-foreground">
+                No financial data recorded yet
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart
+                  data={monthlyData}
+                  margin={{ top: 8, right: 12, bottom: 4, left: 0 }}
+                  barCategoryGap="30%"
+                  barGap={1}
+                >
+                  <CartesianGrid strokeDasharray="4 4" stroke="#f3f4f6" vertical={false} />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    angle={-45}
+                    textAnchor="end"
+                    height={40}
+                  />
+                  <YAxis
+                    tickFormatter={compactCurrency}
+                    tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={44}
+                  />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
+                  <Legend
+                    iconType="circle"
+                    iconSize={7}
+                    wrapperStyle={{ fontSize: 11, color: '#6B7280', paddingTop: 8 }}
+                    align="center"
+                  />
+                  <Bar
+                    dataKey="income"
+                    name="Income"
+                    fill="#3B82F6"
+                    radius={[4, 4, 0, 0]}
+                    animationDuration={500}
+                    animationEasing="ease-out"
+                  />
+                  <Bar
+                    dataKey="expenses"
+                    name="Expenses"
+                    fill="#F87171"
+                    radius={[4, 4, 0, 0]}
+                    animationDuration={500}
+                    animationEasing="ease-out"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* MTD Income by Entity — Horizontal Bar Chart */}
+        <Card className="shadow-none border border-gray-100">
+          <CardHeader className="pb-1 pt-4 px-5">
+            <CardTitle className="text-sm font-semibold text-gray-900">MTD Income by Entity</CardTitle>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            </p>
+          </CardHeader>
+          <CardContent className="px-2 sm:px-4 pb-4 pt-2">
+            {!hasEntityData ? (
+              <div className="flex items-center justify-center h-[300px] text-sm text-muted-foreground">
+                No income recorded yet
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={Math.max(200, entityIncome.length * 56 + 32)}>
+                <BarChart
+                  data={entityIncome}
+                  layout="vertical"
+                  margin={{ top: 4, right: 80, bottom: 4, left: 4 }}
+                  barCategoryGap="24%"
+                >
+                  <CartesianGrid strokeDasharray="4 4" stroke="#f3f4f6" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    tickFormatter={compactCurrency}
+                    tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    tick={{ fontSize: 10, fill: '#4B5563' }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={90}
+                    tickFormatter={(v: string) => v.length > 14 ? v.slice(0, 14) + '...' : v}
+                  />
+                  <Tooltip
+                    formatter={(v: unknown) => formatCurrency(Number(v))}
+                    contentStyle={{
+                      fontSize: 12,
+                      borderRadius: 8,
+                      border: '1px solid #e5e7eb',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                    }}
+                    labelFormatter={(label) => String(label)}
+                  />
+                  <Bar
+                    dataKey="income"
+                    name="Income"
+                    radius={[0, 4, 4, 0]}
+                    animationDuration={500}
+                    animationEasing="ease-out"
+                  >
+                    {entityIncome.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={getEntityColor(entry.name)} />
+                    ))}
+                    <LabelList dataKey="income" content={BarEndLabel} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 })

@@ -621,6 +621,10 @@ export function FinancialsDashboard() {
   useEffect(() => {
     try {
       localStorage.setItem('archway_financials_v2', JSON.stringify(portfolioData))
+      // Save import timestamp so dashboard can show "Last imported: ..."
+      if (Object.keys(portfolioData).length > 0) {
+        localStorage.setItem('archway_last_import', new Date().toISOString())
+      }
     } catch (e) {
       console.warn('Could not save to localStorage:', e)
     }
