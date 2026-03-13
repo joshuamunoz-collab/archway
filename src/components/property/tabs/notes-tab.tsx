@@ -94,9 +94,22 @@ export function NotesTab({ data, users }: { data: PropertyDetailData; users: Use
   // Track locally-linked taskIds so UI updates without full page refresh
   const [linkedTasks, setLinkedTasks] = useState<Record<string, string>>({})
 
+  function stripMentions(text: string, mentions: QuickNoteData['mentionedProperties']): string {
+    let result = text
+    for (const m of mentions) {
+      result = result.replace(new RegExp(`@${m.mentionText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*`, 'g'), '')
+    }
+    return result.trim()
+  }
+
+  function getTomorrowDate(): string {
+    const d = new Date()
+    d.setDate(d.getDate() + 1)
+    return d.toISOString().split('T')[0]
+  }
+
   function openCreateTaskFromNote(note: QuickNoteData) {
     setSourceNoteId(note.id)
-    // Map note category to task type where applicable
     const taskTypeMap: Record<string, string> = {
       maintenance: 'maintenance',
       vacancy: 'general',
@@ -105,11 +118,13 @@ export function NotesTab({ data, users }: { data: PropertyDetailData; users: Use
       property_manager: 'general',
       general: 'general',
     }
+    const stripped = stripMentions(note.content, note.mentionedProperties)
     setForm({
       ...EMPTY_TASK_FORM,
       taskType: taskTypeMap[note.category] || 'general',
-      title: note.content.length > 80 ? note.content.slice(0, 80) + '...' : note.content,
+      title: stripped.length > 80 ? stripped.slice(0, 80) + '...' : stripped,
       description: note.content,
+      dueDate: getTomorrowDate(),
     })
     setCreateOpen(true)
   }
@@ -231,9 +246,9 @@ export function NotesTab({ data, users }: { data: PropertyDetailData; users: Use
 
       {/* Create Task Sheet */}
       <Sheet open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) setSourceNoteId(null) }}>
-        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-md flex flex-col">
           <SheetHeader><SheetTitle>Create Task from Note</SheetTitle></SheetHeader>
-          <div className="space-y-4 py-4">
+          <div className="flex-1 overflow-y-auto space-y-4 py-4 px-1">
             <div>
               <Label>Title *</Label>
               <Input
@@ -322,9 +337,11 @@ export function NotesTab({ data, users }: { data: PropertyDetailData; users: Use
               />
             </div>
           </div>
-          <SheetFooter>
+          <SheetFooter className="border-t border-border pt-4 flex-row gap-3 justify-end">
             <Button variant="outline" onClick={() => { setCreateOpen(false); setSourceNoteId(null) }}>Cancel</Button>
-            <Button onClick={createTask} disabled={saving}>{saving ? 'Creating...' : 'Create Task'}</Button>
+            <Button onClick={createTask} disabled={saving}>
+              {saving ? 'Creating...' : 'Create Task'}
+            </Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>
