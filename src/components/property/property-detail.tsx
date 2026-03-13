@@ -123,7 +123,7 @@ export function PropertyDetail({ data, users }: { data: PropertyDetailData; user
                   <MapPin className="h-3.5 w-3.5" /> Google Maps
                 </Button>
               </a>
-              <a href="https://www.stlouis-mo.gov/data/address-search/index.cfm" target="_blank" rel="noopener noreferrer">
+              <a href={`https://www.stlouis-mo.gov/data/address-search/index.cfm?addr=${encodeURIComponent(data.addressLine1)}&stname=&stnum=`} target="_blank" rel="noopener noreferrer">
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs h-7">
                   <Building2 className="h-3.5 w-3.5" /> Property Lookup
                 </Button>
