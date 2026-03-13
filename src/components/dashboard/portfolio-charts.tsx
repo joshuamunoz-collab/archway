@@ -10,8 +10,6 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  Cell,
-  LabelList,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/format'
@@ -20,21 +18,6 @@ interface MonthlyData {
   month: string
   income: number
   expenses: number
-}
-
-interface EntityIncome {
-  name: string
-  income: number
-}
-
-// Consistent entity color map — stable across renders
-const ENTITY_COLOR_MAP = new Map<string, string>()
-const COLOR_PALETTE = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6']
-function getEntityColor(name: string): string {
-  if (!ENTITY_COLOR_MAP.has(name)) {
-    ENTITY_COLOR_MAP.set(name, COLOR_PALETTE[ENTITY_COLOR_MAP.size % COLOR_PALETTE.length])
-  }
-  return ENTITY_COLOR_MAP.get(name)!
 }
 
 // Compact currency for Y-axis: $0, $15k, $30k
@@ -59,12 +42,6 @@ function getFixedMonthKeys(): string[] {
     keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
   }
   return keys
-}
-
-// Get current month key "YYYY-MM"
-function getCurrentMonthKey(): string {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 }
 
 interface LocalStorageData {
@@ -119,27 +96,6 @@ function buildMonthlyFromLocal(
   }))
 }
 
-function buildEntityIncomeFromLocal(data: LocalStorageData): EntityIncome[] {
-  const currentMonth = getCurrentMonthKey()
-  const result: EntityIncome[] = []
-
-  for (const [entityName, months] of Object.entries(data)) {
-    let income = 0
-    const properties = months[currentMonth]
-    if (properties) {
-      for (const prop of properties) {
-        income += prop.rent || 0
-      }
-    }
-    result.push({
-      name: entityName,
-      income: Math.round(income * 100) / 100,
-    })
-  }
-
-  return result.sort((a, b) => b.income - a.income)
-}
-
 // Custom tooltip showing Month, Income, Expenses, Net
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function CustomTooltip({ active, payload, label }: any) {
@@ -176,32 +132,11 @@ function CustomTooltip({ active, payload, label }: any) {
   )
 }
 
-// Custom label for horizontal bar ends
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function BarEndLabel(props: any) {
-  const { x = 0, y = 0, width = 0, height = 0, value = 0 } = props
-  if (!value || value === 0) return null
-  return (
-    <text
-      x={x + width + 6}
-      y={y + height / 2}
-      fill="#374151"
-      fontSize={11}
-      fontWeight={500}
-      dominantBaseline="central"
-    >
-      {formatCurrency(Number(value))}
-    </text>
-  )
-}
-
 export const PortfolioCharts = memo(function PortfolioCharts({
   monthlyData: serverMonthlyData,
-  entityIncome: serverEntityIncome,
   entityNames: serverEntityNames,
 }: {
   monthlyData: MonthlyData[]
-  entityIncome: EntityIncome[]
   entityNames: string[]
 }) {
   const [localData, setLocalData] = useState<LocalStorageData | null>(null)
@@ -219,25 +154,13 @@ export const PortfolioCharts = memo(function PortfolioCharts({
     return serverEntityNames
   }, [localData, serverEntityNames])
 
-  // Assign colors consistently on mount
-  useEffect(() => {
-    for (const name of entityOptions) getEntityColor(name)
-  }, [entityOptions])
-
   // Build monthly data with entity filter support
   const monthlyData = useMemo(() => {
     if (localData) return buildMonthlyFromLocal(localData, entityFilter)
     return serverMonthlyData
   }, [localData, entityFilter, serverMonthlyData])
 
-  // Build entity income from localStorage or server
-  const entityIncome = useMemo(() => {
-    if (localData) return buildEntityIncomeFromLocal(localData)
-    return serverEntityIncome
-  }, [localData, serverEntityIncome])
-
   const hasMonthlyData = monthlyData.some(m => m.income > 0 || m.expenses > 0)
-  const hasEntityData = entityIncome.some(e => e.income > 0)
 
   // Dynamic chart title based on filter
   const chartTitle = entityFilter === 'all'
@@ -253,9 +176,9 @@ export const PortfolioCharts = memo(function PortfolioCharts({
         </p>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div>
         {/* Income vs Expenses — Grouped Bar Chart */}
-        <Card className="lg:col-span-2 shadow-none border border-gray-100">
+        <Card className="shadow-none border border-gray-100">
           <CardHeader className="pb-1 pt-4 px-5">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
@@ -333,72 +256,6 @@ export const PortfolioCharts = memo(function PortfolioCharts({
                     animationDuration={500}
                     animationEasing="ease-out"
                   />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* MTD Income by Entity — Horizontal Bar Chart */}
-        <Card className="shadow-none border border-gray-100">
-          <CardHeader className="pb-1 pt-4 px-5">
-            <CardTitle className="text-sm font-semibold text-gray-900">MTD Income by Entity</CardTitle>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-            </p>
-          </CardHeader>
-          <CardContent className="px-2 sm:px-4 pb-4 pt-2">
-            {!hasEntityData ? (
-              <div className="flex items-center justify-center h-[300px] text-sm text-muted-foreground">
-                No income recorded yet
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={Math.max(200, entityIncome.length * 56 + 32)}>
-                <BarChart
-                  data={entityIncome}
-                  layout="vertical"
-                  margin={{ top: 4, right: 80, bottom: 4, left: 4 }}
-                  barCategoryGap="24%"
-                >
-                  <CartesianGrid strokeDasharray="4 4" stroke="#f3f4f6" horizontal={false} />
-                  <XAxis
-                    type="number"
-                    tickFormatter={compactCurrency}
-                    tick={{ fontSize: 10, fill: '#9CA3AF' }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    tick={{ fontSize: 10, fill: '#4B5563' }}
-                    tickLine={false}
-                    axisLine={false}
-                    width={90}
-                    tickFormatter={(v: string) => v.length > 14 ? v.slice(0, 14) + '...' : v}
-                  />
-                  <Tooltip
-                    formatter={(v: unknown) => formatCurrency(Number(v))}
-                    contentStyle={{
-                      fontSize: 12,
-                      borderRadius: 8,
-                      border: '1px solid #e5e7eb',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                    }}
-                    labelFormatter={(label) => String(label)}
-                  />
-                  <Bar
-                    dataKey="income"
-                    name="Income"
-                    radius={[0, 4, 4, 0]}
-                    animationDuration={500}
-                    animationEasing="ease-out"
-                  >
-                    {entityIncome.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={getEntityColor(entry.name)} />
-                    ))}
-                    <LabelList dataKey="income" content={BarEndLabel} />
-                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}

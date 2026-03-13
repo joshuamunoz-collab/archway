@@ -191,28 +191,6 @@ export default async function DashboardPage() {
     })
   }
 
-  // ── MTD income by entity ─────────────────────────────────────────────────────
-  const mtdPaymentsByEntity = await prisma.payment.groupBy({
-    by: ['propertyId'],
-    where: { date: { gte: mtdStart }, status: { not: 'nsf' } },
-    _sum: { amount: true },
-  })
-
-  // Map propertyId → entityId
-  const propertyEntityMap = new Map(properties.map(p => [p.id, p.entity.id]))
-  const entityIncomeMap = new Map<string, number>()
-  for (const row of mtdPaymentsByEntity) {
-    const entityId = propertyEntityMap.get(row.propertyId)
-    if (!entityId) continue
-    const amt = Number(row._sum.amount ?? 0)
-    entityIncomeMap.set(entityId, (entityIncomeMap.get(entityId) ?? 0) + amt)
-  }
-
-  const entityIncome = entities.map(e => ({
-    name: e.name.split(' ')[0],
-    income: Math.round((entityIncomeMap.get(e.id) ?? 0) * 100) / 100,
-  }))
-
   // ── Serialize for client components ─────────────────────────────────────────
   const tableRows = properties.map(p => ({
     id: p.id,
@@ -282,7 +260,7 @@ export default async function DashboardPage() {
         />
 
         {/* Charts */}
-        <PortfolioCharts monthlyData={monthlyData} entityIncome={entityIncome} entityNames={entityNames} />
+        <PortfolioCharts monthlyData={monthlyData} entityNames={entityNames} />
 
         {/* Property Table */}
         <div className="bg-white rounded-xl border border-gray-200/60 shadow-sm p-5">
