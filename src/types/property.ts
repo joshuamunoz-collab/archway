@@ -178,6 +178,7 @@ export interface QuickNoteData {
   category: string
   authorName: string
   createdAt: string
+  taskId: string | null
   mentionedProperties: { id: string; addressLine1: string; mentionText: string }[]
 }
 

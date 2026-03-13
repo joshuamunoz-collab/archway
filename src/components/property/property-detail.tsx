@@ -46,7 +46,12 @@ const TABS = [
   { value: 'activity',   label: 'Activity' },
 ]
 
-export function PropertyDetail({ data }: { data: PropertyDetailData }) {
+interface UserOption {
+  id: string
+  fullName: string
+}
+
+export function PropertyDetail({ data, users }: { data: PropertyDetailData; users: UserOption[] }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const defaultTab = searchParams.get('tab') ?? 'overview'
@@ -194,7 +199,7 @@ export function PropertyDetail({ data }: { data: PropertyDetailData }) {
         {activeTab === 'inspections' && <InspectionsTab data={data} />}
         {activeTab === 'documents'   && <DocumentsTab data={data} />}
         {activeTab === 'photos'     && <PhotosTab data={data} />}
-        {activeTab === 'notes'      && <NotesTab data={data} />}
+        {activeTab === 'notes'      && <NotesTab data={data} users={users} />}
         {activeTab === 'activity'   && <ActivityTab data={data} />}
       </div>
     </div>

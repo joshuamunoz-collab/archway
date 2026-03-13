@@ -115,7 +115,7 @@ export default async function PropertyDetailPage({
     .sort((a, b) => b.amount - a.amount)
 
   // Load activity log separately (entityType='property', entityId=id)
-  const [activityLog, linkedNoteJoins] = await Promise.all([
+  const [activityLog, linkedNoteJoins, activeUsers] = await Promise.all([
     prisma.activityLog.findMany({
       where: { entityType: 'property', entityId: id },
       include: { user: { select: { fullName: true } } },
@@ -134,6 +134,11 @@ export default async function PropertyDetailPage({
           },
         },
       },
+    }),
+    prisma.userProfile.findMany({
+      where: { isActive: true },
+      select: { id: true, fullName: true },
+      orderBy: { fullName: 'asc' },
     }),
   ])
 
@@ -309,6 +314,7 @@ export default async function PropertyDetailPage({
           category: j.note.category,
           authorName: j.note.author.fullName,
           createdAt: j.note.createdAt.toISOString(),
+          taskId: j.note.taskId,
           mentionedProperties: j.note.properties.map(p => ({
             id: p.property.id,
             addressLine1: p.property.addressLine1,
@@ -321,7 +327,7 @@ export default async function PropertyDetailPage({
 
   return (
     <AppShell>
-      <PropertyDetail data={data} />
+      <PropertyDetail data={data} users={activeUsers} />
     </AppShell>
   )
 }
