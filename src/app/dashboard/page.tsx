@@ -281,7 +281,7 @@ export default async function DashboardPage() {
         />
 
         {/* Charts */}
-        <PortfolioCharts monthlyData={monthlyData} entityIncome={entityIncome} />
+        <PortfolioCharts monthlyData={monthlyData} entityIncome={entityIncome} entityNames={entityNames} />
 
         {/* Property Table */}
         <div className="bg-white rounded-xl border border-gray-200/60 shadow-sm p-5">
