@@ -168,7 +168,8 @@ export default async function DashboardPage() {
     const map = new Map<string, number>()
     for (const r of rows) {
       const d = r.date
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      // Use UTC methods — Prisma @db.Date returns midnight UTC
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
       const amt = typeof r.amount === 'object' ? r.amount.toNumber() : Number(r.amount)
       map.set(key, (map.get(key) ?? 0) + amt)
     }
@@ -190,10 +191,25 @@ export default async function DashboardPage() {
   }
 
   // ── MTD income by entity ─────────────────────────────────────────────────────
-  // For now use property counts as proxy; full entity income requires join
+  const mtdPaymentsByEntity = await prisma.payment.groupBy({
+    by: ['propertyId'],
+    where: { date: { gte: mtdStart }, status: { not: 'nsf' } },
+    _sum: { amount: true },
+  })
+
+  // Map propertyId → entityId
+  const propertyEntityMap = new Map(properties.map(p => [p.id, p.entity.id]))
+  const entityIncomeMap = new Map<string, number>()
+  for (const row of mtdPaymentsByEntity) {
+    const entityId = propertyEntityMap.get(row.propertyId)
+    if (!entityId) continue
+    const amt = Number(row._sum.amount ?? 0)
+    entityIncomeMap.set(entityId, (entityIncomeMap.get(entityId) ?? 0) + amt)
+  }
+
   const entityIncome = entities.map(e => ({
-    name: e.name.split(' ')[0], // first word for brevity
-    income: 0, // placeholder until payment data exists
+    name: e.name.split(' ')[0],
+    income: Math.round((entityIncomeMap.get(e.id) ?? 0) * 100) / 100,
   }))
 
   // ── Serialize for client components ─────────────────────────────────────────
